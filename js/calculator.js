@@ -621,7 +621,7 @@ class ConventionRoomCalculator {
         let sessionId = 1;
         let paperSessionCount = 0;
         let roundTableCount = 0;
-        let globalSlotIndex = 0; // Track continuous alphabet progression
+        // Note: Using per-day slot indexing instead of global continuous indexing
         
         let breakdownHTML = '';
         
@@ -662,7 +662,8 @@ class ConventionRoomCalculator {
                 `;
             } else {
                 for (let slot = 0; slot < timeSlotsThisDay; slot++) {
-                    const slotLabel = timeSlotLabels[globalSlotIndex] || `Slot ${globalSlotIndex + 1}`;
+                    // Use day-specific slot indexing instead of global continuous indexing
+                    const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
                     const sessionsInThisSlot = Math.min(sessionsPerSlotThisDay, totalRemainingSessions);
                     
                     if (sessionsInThisSlot <= 0) break;
@@ -758,7 +759,7 @@ class ConventionRoomCalculator {
                         </div>
                     `;
                     
-                    globalSlotIndex++; // Increment for continuous alphabet progression
+                    // Note: Removed globalSlotIndex increment as we now use day-specific slot indexing
                 }
             }
             
@@ -872,7 +873,7 @@ class ConventionRoomCalculator {
         let sessionId = 1;
         let paperSessionCount = 0;
         let roundTableCount = 0;
-        let globalSlotIndex = 0;
+        // Note: Using per-day slot indexing instead of global continuous indexing
         
         for (let day = 1; day <= this.currentResults.conventionDays; day++) {
             const dayIndex = day - 1;
@@ -901,8 +902,9 @@ class ConventionRoomCalculator {
             }
             yPos += 10;
             
+            // Use per-day slot indexing (A, B, C, D for each day)
             for (let slot = 0; slot < timeSlotsThisDay; slot++) {
-                const slotLabel = timeSlotLabels[globalSlotIndex] || `Slot ${globalSlotIndex + 1}`;
+                const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
                 const remainingPaperSessions = this.currentResults.paperSessions - paperSessionCount;
                 const remainingRoundTables = this.currentResults.roundTableSessions - roundTableCount;
                 const totalRemainingSessions = remainingPaperSessions + remainingRoundTables;
@@ -1077,7 +1079,7 @@ class ConventionRoomCalculator {
                 }
                 
                 yPos += 3;
-                globalSlotIndex++;
+                // Note: Removed globalSlotIndex increment as we now use day-specific slot indexing
             }
             
             yPos += 5;
@@ -1441,20 +1443,23 @@ class ConventionRoomCalculator {
         const inputsContainer = document.getElementById('timeSlotInputs');
         
         let inputsHTML = '';
-        let globalSlotIndex = 0;
         
         for (let day = 1; day <= data.conventionDays; day++) {
+            // Get time slots for this specific day
+            const timeSlotsThisDay = data.timeSlotsPerDayArray ? data.timeSlotsPerDayArray[day - 1] : data.timeSlotsPerDay;
+            
             inputsHTML += `
                 <div class="mb-4">
                     <h4 class="font-medium text-gray-800 mb-2 flex items-center">
                         <i class="fas fa-calendar-day text-blue-600 mr-2"></i>
-                        Day ${day}
+                        Day ${day} (${timeSlotsThisDay} slots)
                     </h4>
                     <div class="grid grid-cols-2 gap-3 ml-6">
             `;
             
-            for (let slot = 0; slot < data.timeSlotsPerDay; slot++) {
-                const slotLabel = timeSlotLabels[globalSlotIndex] || `Slot ${globalSlotIndex + 1}`;
+            // Use per-day slot indexing (A, B, C, D for each day)
+            for (let slot = 0; slot < timeSlotsThisDay; slot++) {
+                const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
                 const timeSlotId = this.getTimeSlotId(day, slotLabel);
                 const existingTime = this.timeSlotSchedule.get(timeSlotId);
                 
@@ -1467,8 +1472,6 @@ class ConventionRoomCalculator {
                                class="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm">
                     </div>
                 `;
-                
-                globalSlotIndex++;
             }
             
             inputsHTML += `
@@ -1489,15 +1492,17 @@ class ConventionRoomCalculator {
         startTime.setHours(9, 0, 0, 0); // Start at 9:00 AM
         
         const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
-        let globalSlotIndex = 0;
-        let currentTime = new Date(startTime);
         
         for (let day = 1; day <= data.conventionDays; day++) {
-            // Reset to start time for each day
-            currentTime = new Date(startTime);
+            // Get time slots for this specific day
+            const timeSlotsThisDay = data.timeSlotsPerDayArray ? data.timeSlotsPerDayArray[day - 1] : data.timeSlotsPerDay;
             
-            for (let slot = 0; slot < data.timeSlotsPerDay; slot++) {
-                const slotLabel = timeSlotLabels[globalSlotIndex] || `Slot ${globalSlotIndex + 1}`;
+            // Reset to start time for each day
+            let currentTime = new Date(startTime);
+            
+            // Use per-day slot indexing (A, B, C, D for each day)
+            for (let slot = 0; slot < timeSlotsThisDay; slot++) {
+                const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
                 const timeSlotId = this.getTimeSlotId(day, slotLabel);
                 const timeInput = document.getElementById(`time-${timeSlotId}`);
                 
@@ -1508,7 +1513,6 @@ class ConventionRoomCalculator {
                 
                 // Add session duration and break for next slot
                 currentTime.setMinutes(currentTime.getMinutes() + sessionDuration + breakDuration);
-                globalSlotIndex++;
             }
         }
     }
@@ -1516,22 +1520,23 @@ class ConventionRoomCalculator {
     saveTimeSlotConfiguration() {
         const data = this.getFormData();
         const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
-        let globalSlotIndex = 0;
         
         // Clear existing schedule
         this.timeSlotSchedule.clear();
         
         for (let day = 1; day <= data.conventionDays; day++) {
-            for (let slot = 0; slot < data.timeSlotsPerDay; slot++) {
-                const slotLabel = timeSlotLabels[globalSlotIndex] || `Slot ${globalSlotIndex + 1}`;
+            // Get time slots for this specific day
+            const timeSlotsThisDay = data.timeSlotsPerDayArray ? data.timeSlotsPerDayArray[day - 1] : data.timeSlotsPerDay;
+            
+            // Use per-day slot indexing (A, B, C, D for each day)
+            for (let slot = 0; slot < timeSlotsThisDay; slot++) {
+                const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
                 const timeSlotId = this.getTimeSlotId(day, slotLabel);
                 const timeInput = document.getElementById(`time-${timeSlotId}`);
                 
                 if (timeInput && timeInput.value) {
                     this.timeSlotSchedule.set(timeSlotId, timeInput.value);
                 }
-                
-                globalSlotIndex++;
             }
         }
         
