@@ -1,10 +1,7 @@
 {
   "name": "convention-room-calculator",
   "version": "1.0.0",
-  "description": "A comprehensive tool for calculating optimal room allocation for academic conventions",
   "scripts": {
-    "build": "echo 'Static site - no build needed'",
-    "dev": "python -m http.server 3000 || php -S localhost:3000 || serve -s .",
-    "start": "serve -s ."
+    "build": "echo 'No build needed - static site'"
   }
 }
