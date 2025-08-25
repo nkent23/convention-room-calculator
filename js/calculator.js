@@ -223,7 +223,11 @@ class ConventionRoomCalculator {
                 
                 totalSessionCapacity += slots * sessionsPerSlot;
                 totalRoomSlots += slots * rooms;
-                minRoomsNeeded = Math.max(minRoomsNeeded, Math.ceil(sessionsPerSlot / rooms) * rooms);
+                
+                // Calculate minimum rooms needed per day based on concurrent sessions
+                const maxConcurrentSessions = sessionsPerSlot;
+                const roomsNeededThisDay = Math.min(rooms, maxConcurrentSessions);
+                minRoomsNeeded = Math.max(minRoomsNeeded, roomsNeededThisDay);
             }
         } else {
             // Use standard calculations
