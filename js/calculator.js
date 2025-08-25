@@ -15,6 +15,9 @@ class ConventionRoomCalculator {
         this.roomNames = new Map(); // Store custom room names (room number -> custom name)
         this.moderators = new Map(); // Store moderator details (id -> {name, school, email, bio})
         this.chairs = new Map(); // Store chair details (id -> {name, school, email, bio})
+        this.customTimeSlots = new Map(); // Store custom time slots per day (day -> number of slots)
+        this.customRoomsPerDay = new Map(); // Store custom available rooms per day (day -> number of rooms)
+        this.customSessionsPerSlot = new Map(); // Store custom sessions per time slot per day (day -> sessions per slot)
         
         this.initializeEventListeners();
         this.initializeModalEventListeners();
@@ -25,6 +28,7 @@ class ConventionRoomCalculator {
         this.initializeRoomManagementEventListeners();
         this.initializeModeratorManagementEventListeners();
         this.initializeChairManagementEventListeners();
+        this.initializeCustomTimeSlotsEventListeners();
         this.loadDefaultCategories();
         this.loadDataFromSupabase(); // Load saved data
         this.calculateRequirements(); // Initial calculation with default values
@@ -147,16 +151,49 @@ class ConventionRoomCalculator {
     }
 
     getFormData() {
+        const conventionDays = parseInt(document.getElementById('conventionDays').value) || 3;
+        const standardTimeSlotsPerDay = parseInt(document.getElementById('timeSlotsPerDay').value) || 4;
+        const standardAvailableRooms = parseInt(document.getElementById('availableRooms').value) || 10;
+        const standardSessionsPerTimeSlot = parseInt(document.getElementById('sessionsPerTimeSlot').value) || 3;
+        
+        // Calculate arrays for daily configurations
+        let totalTimeSlots = 0;
+        let timeSlotsPerDay = [];
+        let roomsPerDay = [];
+        let sessionsPerSlotPerDay = [];
+        
+        const hasCustomConfig = this.customTimeSlots.size > 0 || this.customRoomsPerDay.size > 0 || this.customSessionsPerSlot.size > 0;
+        
+        for (let day = 1; day <= conventionDays; day++) {
+            // Time slots per day
+            const slots = this.customTimeSlots.get(day) || standardTimeSlotsPerDay;
+            timeSlotsPerDay.push(slots);
+            totalTimeSlots += slots;
+            
+            // Rooms per day
+            const rooms = this.customRoomsPerDay.get(day) || standardAvailableRooms;
+            roomsPerDay.push(rooms);
+            
+            // Sessions per slot per day
+            const sessionsPerSlot = this.customSessionsPerSlot.get(day) || standardSessionsPerTimeSlot;
+            sessionsPerSlotPerDay.push(sessionsPerSlot);
+        }
+        
         return {
-            conventionDays: parseInt(document.getElementById('conventionDays').value) || 3,
-            timeSlotsPerDay: parseInt(document.getElementById('timeSlotsPerDay').value) || 4,
-            availableRooms: parseInt(document.getElementById('availableRooms').value) || 10,
+            conventionDays: conventionDays,
+            timeSlotsPerDay: standardTimeSlotsPerDay, // Keep for backward compatibility
+            timeSlotsPerDayArray: timeSlotsPerDay, // Array of slots per day
+            totalTimeSlots: totalTimeSlots, // Total across all days
+            availableRooms: standardAvailableRooms, // Keep for backward compatibility
+            roomsPerDayArray: roomsPerDay, // Array of rooms per day
+            sessionsPerTimeSlot: standardSessionsPerTimeSlot, // Keep for backward compatibility
+            sessionsPerSlotPerDayArray: sessionsPerSlotPerDay, // Array of sessions per slot per day
+            hasCustomDailyConfig: hasCustomConfig, // Flag indicating custom configuration exists
             totalPapers: parseInt(document.getElementById('totalPapers').value) || 0,
             papersPerSession: parseInt(document.getElementById('papersPerSession').value) || 4,
             minPapersPerSession: parseInt(document.getElementById('minPapersPerSession').value) || 2,
             maxPapersPerSession: parseInt(document.getElementById('maxPapersPerSession').value) || 6,
             papersPerRoom: parseInt(document.getElementById('papersPerRoom').value) || 1,
-            sessionsPerTimeSlot: parseInt(document.getElementById('sessionsPerTimeSlot').value) || 3,
             totalRoundTables: parseInt(document.getElementById('totalRoundTables').value) || 0,
             roundTableDuration: parseInt(document.getElementById('roundTableDuration').value) || 1
         };
@@ -171,23 +208,40 @@ class ConventionRoomCalculator {
         const roundTableSessions = data.totalRoundTables * data.roundTableDuration;
         const totalSessions = paperSessions + roundTableSessions;
         
-        // Calculate total available time slots
-        const totalTimeSlots = data.conventionDays * data.timeSlotsPerDay;
-        const totalRoomSlots = totalTimeSlots * data.availableRooms;
+        // Calculate total capacity using per-day configurations
+        let totalSessionCapacity = 0;
+        let totalRoomSlots = 0;
+        let minRoomsNeeded = 0;
         
-        // Calculate minimum rooms needed
-        const minRoomsNeeded = Math.ceil(totalSessions / totalTimeSlots);
-        
-        // Calculate based on sessions per time slot setting
-        const totalSessionSlots = totalTimeSlots * data.sessionsPerTimeSlot;
+        if (data.hasCustomDailyConfig) {
+            // Use per-day configurations
+            for (let day = 1; day <= data.conventionDays; day++) {
+                const dayIndex = day - 1;
+                const slots = data.timeSlotsPerDayArray[dayIndex];
+                const rooms = data.roomsPerDayArray[dayIndex];
+                const sessionsPerSlot = data.sessionsPerSlotPerDayArray[dayIndex];
+                
+                totalSessionCapacity += slots * sessionsPerSlot;
+                totalRoomSlots += slots * rooms;
+                minRoomsNeeded = Math.max(minRoomsNeeded, Math.ceil(sessionsPerSlot / rooms) * rooms);
+            }
+        } else {
+            // Use standard calculations
+            const totalTimeSlots = data.totalTimeSlots;
+            totalRoomSlots = totalTimeSlots * data.availableRooms;
+            totalSessionCapacity = totalTimeSlots * data.sessionsPerTimeSlot;
+            minRoomsNeeded = Math.ceil(totalSessions / totalTimeSlots);
+        }
         
         // Calculate if it's feasible
-        const isFeasible = totalSessions <= totalSessionSlots;
-        const utilizationRate = (totalSessions / totalSessionSlots * 100).toFixed(1);
+        const isFeasible = totalSessions <= totalSessionCapacity;
+        const utilizationRate = (totalSessions / totalSessionCapacity * 100).toFixed(1);
         
-        // Calculate room distribution per day
+        // Calculate approximate sessions per day (for backward compatibility)
         const sessionsPerDay = Math.ceil(totalSessions / data.conventionDays);
-        const roomsUsedPerDay = Math.ceil(sessionsPerDay / data.timeSlotsPerDay);
+        const roomsUsedPerDay = data.hasCustomDailyConfig ? 
+            Math.max(...data.roomsPerDayArray) : 
+            Math.ceil(sessionsPerDay / data.timeSlotsPerDay);
         
         const results = {
             ...data,
@@ -195,16 +249,15 @@ class ConventionRoomCalculator {
             paperSessions,
             roundTableSessions,
             totalSessions,
-            totalTimeSlots,
+            totalSessionCapacity, // New: total session capacity across all days
             totalRoomSlots,
-            totalSessionSlots,
             minRoomsNeeded,
             isFeasible,
             utilizationRate,
             sessionsPerDay,
             roomsUsedPerDay,
             excessRooms: data.availableRooms - minRoomsNeeded,
-            sessionsPerSlot: Math.ceil(totalSessions / totalTimeSlots)
+            sessionsPerSlot: Math.ceil(totalSessions / data.totalTimeSlots)
         };
 
         this.currentResults = results;
@@ -375,7 +428,7 @@ class ConventionRoomCalculator {
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Available Time Slots:</span>
-                        <span class="font-medium">${results.totalTimeSlots} slots</span>
+                        <span class="font-medium">${results.totalTimeSlots} slots${results.hasCustomDailyConfig ? ' (variable per day)' : ''}</span>
                     </div>
                     ${results.excessRooms > 0 ? `
                     <div class="flex justify-between text-green-600">
@@ -435,22 +488,36 @@ class ConventionRoomCalculator {
         let remainingSessions = results.totalSessions;
         
         for (let day = 1; day <= results.conventionDays; day++) {
-            const sessionsThisDay = Math.min(remainingSessions, results.sessionsPerDay);
-            const roomsUsedThisDay = Math.ceil(sessionsThisDay / results.timeSlotsPerDay);
-            const utilizationThisDay = ((sessionsThisDay / (results.timeSlotsPerDay * results.sessionsPerTimeSlot)) * 100).toFixed(1);
+            const dayIndex = day - 1;
+            
+            // Get per-day configurations
+            const timeSlotsThisDay = results.timeSlotsPerDayArray ? results.timeSlotsPerDayArray[dayIndex] : results.timeSlotsPerDay;
+            const roomsThisDay = results.roomsPerDayArray ? results.roomsPerDayArray[dayIndex] : results.availableRooms;
+            const sessionsPerSlotThisDay = results.sessionsPerSlotPerDayArray ? results.sessionsPerSlotPerDayArray[dayIndex] : results.sessionsPerTimeSlot;
+            
+            // Calculate capacity and sessions for this day
+            const dayCapacity = timeSlotsThisDay * sessionsPerSlotThisDay;
+            const sessionsThisDay = Math.min(remainingSessions, dayCapacity);
+            const roomsUsedThisDay = timeSlotsThisDay > 0 ? Math.ceil(sessionsThisDay / timeSlotsThisDay) : 0;
+            const utilitzationThisDay = dayCapacity > 0 ? ((sessionsThisDay / dayCapacity) * 100).toFixed(1) : '0.0';
             
             remainingSessions -= sessionsThisDay;
             
-            const utilizationColor = utilizationThisDay > 80 ? 'text-red-600' : 
-                                   utilizationThisDay > 60 ? 'text-yellow-600' : 'text-green-600';
+            const utilizationColor = utilitzationThisDay > 80 ? 'text-red-600' : 
+                                   utilitzationThisDay > 60 ? 'text-yellow-600' : 'text-green-600';
+
+            // Display rooms info (show custom if different from standard)
+            const roomsDisplay = results.hasCustomDailyConfig && roomsThisDay !== results.availableRooms ? 
+                `${roomsUsedThisDay}/${roomsThisDay}` : 
+                `${roomsUsedThisDay}/${results.availableRooms}`;
 
             tableHTML += `
                 <tr class="${day % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
                     <td class="px-4 py-2 text-sm font-medium text-gray-900">Day ${day}</td>
-                    <td class="px-4 py-2 text-sm text-gray-600">${results.timeSlotsPerDay}</td>
-                    <td class="px-4 py-2 text-sm text-gray-600">${roomsUsedThisDay}/${results.availableRooms}</td>
-                    <td class="px-4 py-2 text-sm text-gray-600">${sessionsThisDay}</td>
-                    <td class="px-4 py-2 text-sm ${utilizationColor} font-medium">${utilizationThisDay}%</td>
+                    <td class="px-4 py-2 text-sm text-gray-600">${timeSlotsThisDay}${results.hasCustomDailyConfig ? '*' : ''}</td>
+                    <td class="px-4 py-2 text-sm text-gray-600">${roomsDisplay}${results.hasCustomDailyConfig && roomsThisDay !== results.availableRooms ? '*' : ''}</td>
+                    <td class="px-4 py-2 text-sm text-gray-600">${sessionsThisDay}/${dayCapacity}${results.hasCustomDailyConfig ? '*' : ''}</td>
+                    <td class="px-4 py-2 text-sm ${utilizationColor} font-medium">${utilitzationThisDay}%</td>
                 </tr>
             `;
         }
@@ -476,10 +543,22 @@ class ConventionRoomCalculator {
         let remainingSessions = results.totalSessions;
 
         for (let day = 1; day <= results.conventionDays; day++) {
-            const sessionsThisDay = Math.min(remainingSessions, results.sessionsPerDay);
-            const utilization = (sessionsThisDay / (results.timeSlotsPerDay * results.sessionsPerTimeSlot)) * 100;
+            const dayIndex = day - 1;
             
-            labels.push(`Day ${day}`);
+            // Get per-day configurations
+            const timeSlotsThisDay = results.timeSlotsPerDayArray ? results.timeSlotsPerDayArray[dayIndex] : results.timeSlotsPerDay;
+            const sessionsPerSlotThisDay = results.sessionsPerSlotPerDayArray ? results.sessionsPerSlotPerDayArray[dayIndex] : results.sessionsPerTimeSlot;
+            
+            // Calculate capacity and sessions for this day
+            const dayCapacity = timeSlotsThisDay * sessionsPerSlotThisDay;
+            const sessionsThisDay = Math.min(remainingSessions, dayCapacity);
+            const utilization = dayCapacity > 0 ? (sessionsThisDay / dayCapacity) * 100 : 0;
+            
+            const labelInfo = results.hasCustomDailyConfig ? 
+                `Day ${day} (${timeSlotsThisDay}×${sessionsPerSlotThisDay}=${dayCapacity})` : 
+                `Day ${day} (${timeSlotsThisDay} slots)`;
+            
+            labels.push(labelInfo);
             data.push(utilization.toFixed(1));
             remainingSessions -= sessionsThisDay;
         }
@@ -547,10 +626,23 @@ class ConventionRoomCalculator {
         let breakdownHTML = '';
         
         for (let day = 1; day <= results.conventionDays; day++) {
+            const dayIndex = day - 1;
+            
+            // Get per-day configurations
+            const timeSlotsThisDay = results.timeSlotsPerDayArray ? results.timeSlotsPerDayArray[dayIndex] : results.timeSlotsPerDay;
+            const roomsThisDay = results.roomsPerDayArray ? results.roomsPerDayArray[dayIndex] : results.availableRooms;
+            const sessionsPerSlotThisDay = results.sessionsPerSlotPerDayArray ? results.sessionsPerSlotPerDayArray[dayIndex] : results.sessionsPerTimeSlot;
+            
+            const dayCapacity = timeSlotsThisDay * sessionsPerSlotThisDay;
+            const configInfo = results.hasCustomDailyConfig ? 
+                ` - ${timeSlotsThisDay} slots × ${sessionsPerSlotThisDay} sessions = ${dayCapacity} capacity` : 
+                ` (${timeSlotsThisDay} time slots)`;
+            
             breakdownHTML += `
                 <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
                     <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3">
-                        <h4 class="text-lg font-semibold">Day ${day}</h4>
+                        <h4 class="text-lg font-semibold">Day ${day}${configInfo}</h4>
+                        ${results.hasCustomDailyConfig ? `<p class="text-sm text-blue-100 mt-1">${roomsThisDay} rooms available</p>` : ''}
                     </div>
                     <div class="p-6">
                         <div class="grid gap-4">
@@ -561,17 +653,17 @@ class ConventionRoomCalculator {
             const remainingRoundTables = results.roundTableSessions - roundTableCount;
             const totalRemainingSessions = remainingPaperSessions + remainingRoundTables;
             
-            if (totalRemainingSessions <= 0) {
+            if (totalRemainingSessions <= 0 || timeSlotsThisDay === 0) {
                 breakdownHTML += `
                     <div class="text-center py-8 text-gray-500">
                         <i class="fas fa-check-circle text-3xl mb-2"></i>
-                        <p>All sessions completed</p>
+                        <p>${totalRemainingSessions <= 0 ? 'All sessions completed' : 'No time slots available'}</p>
                     </div>
                 `;
             } else {
-                for (let slot = 0; slot < results.timeSlotsPerDay; slot++) {
+                for (let slot = 0; slot < timeSlotsThisDay; slot++) {
                     const slotLabel = timeSlotLabels[globalSlotIndex] || `Slot ${globalSlotIndex + 1}`;
-                    const sessionsInThisSlot = Math.min(results.sessionsPerTimeSlot, totalRemainingSessions);
+                    const sessionsInThisSlot = Math.min(sessionsPerSlotThisDay, totalRemainingSessions);
                     
                     if (sessionsInThisSlot <= 0) break;
                     
@@ -738,8 +830,26 @@ class ConventionRoomCalculator {
         
         doc.text(`Convention Duration: ${this.currentResults.conventionDays} days`, 20, yPos);
         yPos += 7;
-        doc.text(`Time Slots per Day: ${this.currentResults.timeSlotsPerDay}`, 20, yPos);
-        yPos += 7;
+        
+        // Show custom daily configuration info if applicable
+        if (this.currentResults.hasCustomDailyConfig) {
+            doc.text(`Daily Configuration: Custom per day (Total: ${this.currentResults.totalTimeSlots} slots)`, 20, yPos);
+            yPos += 7;
+            
+            for (let day = 1; day <= this.currentResults.conventionDays; day++) {
+                const dayIndex = day - 1;
+                const slots = this.currentResults.timeSlotsPerDayArray[dayIndex];
+                const rooms = this.currentResults.roomsPerDayArray[dayIndex];
+                const sessionsPerSlot = this.currentResults.sessionsPerSlotPerDayArray[dayIndex];
+                const capacity = slots * sessionsPerSlot;
+                
+                doc.text(`  Day ${day}: ${slots} slots × ${rooms} rooms × ${sessionsPerSlot} sessions = ${capacity} capacity`, 20, yPos);
+                yPos += 4;
+            }
+        } else {
+            doc.text(`Time Slots per Day: ${this.currentResults.timeSlotsPerDay}`, 20, yPos);
+            yPos += 7;
+        }
         doc.text(`Available Rooms: ${this.currentResults.availableRooms}`, 20, yPos);
         yPos += 7;
         doc.text(`Sessions per Time Slot: ${this.currentResults.sessionsPerTimeSlot}`, 20, yPos);
@@ -765,6 +875,16 @@ class ConventionRoomCalculator {
         let globalSlotIndex = 0;
         
         for (let day = 1; day <= this.currentResults.conventionDays; day++) {
+            const dayIndex = day - 1;
+            
+            // Get per-day configurations
+            const timeSlotsThisDay = this.currentResults.timeSlotsPerDayArray ? 
+                this.currentResults.timeSlotsPerDayArray[dayIndex] : this.currentResults.timeSlotsPerDay;
+            const roomsThisDay = this.currentResults.roomsPerDayArray ? 
+                this.currentResults.roomsPerDayArray[dayIndex] : this.currentResults.availableRooms;
+            const sessionsPerSlotThisDay = this.currentResults.sessionsPerSlotPerDayArray ? 
+                this.currentResults.sessionsPerSlotPerDayArray[dayIndex] : this.currentResults.sessionsPerTimeSlot;
+            
             // Check if we need a new page
             if (yPos > 250) {
                 doc.addPage();
@@ -773,10 +893,15 @@ class ConventionRoomCalculator {
             
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(14);
-            doc.text(`Day ${day}`, 20, yPos);
+            
+            if (this.currentResults.hasCustomDailyConfig) {
+                doc.text(`Day ${day} (${timeSlotsThisDay} slots × ${sessionsPerSlotThisDay} sessions, ${roomsThisDay} rooms)`, 20, yPos);
+            } else {
+                doc.text(`Day ${day} (${timeSlotsThisDay} time slots)`, 20, yPos);
+            }
             yPos += 10;
             
-            for (let slot = 0; slot < this.currentResults.timeSlotsPerDay; slot++) {
+            for (let slot = 0; slot < timeSlotsThisDay; slot++) {
                 const slotLabel = timeSlotLabels[globalSlotIndex] || `Slot ${globalSlotIndex + 1}`;
                 const remainingPaperSessions = this.currentResults.paperSessions - paperSessionCount;
                 const remainingRoundTables = this.currentResults.roundTableSessions - roundTableCount;
@@ -784,7 +909,7 @@ class ConventionRoomCalculator {
                 
                 if (totalRemainingSessions <= 0) break;
                 
-                const sessionsInThisSlot = Math.min(this.currentResults.sessionsPerTimeSlot, totalRemainingSessions);
+                const sessionsInThisSlot = Math.min(sessionsPerSlotThisDay, totalRemainingSessions);
                 
                 if (sessionsInThisSlot <= 0) break;
                 
@@ -3373,6 +3498,236 @@ class ConventionRoomCalculator {
         // Regenerate the breakdown to show changes
         this.generateDetailedBreakdown(this.currentResults);
         this.updateCustomizationSummary();
+    }
+
+    // Custom Time Slots Management Functions
+    initializeCustomTimeSlotsEventListeners() {
+        document.getElementById('customizeTimeSlotsBtn').addEventListener('click', () => {
+            this.openCustomTimeSlotsModal();
+        });
+
+        document.getElementById('closeCustomTimeSlotsModal').addEventListener('click', () => {
+            this.closeCustomTimeSlotsModal();
+        });
+
+        document.getElementById('cancelCustomTimeSlots').addEventListener('click', () => {
+            this.closeCustomTimeSlotsModal();
+        });
+
+        document.getElementById('applyCustomTimeSlots').addEventListener('click', () => {
+            this.applyCustomTimeSlots();
+        });
+
+        document.getElementById('resetTimeSlotsBtn').addEventListener('click', () => {
+            this.resetToStandardTimeSlots();
+        });
+    }
+
+    openCustomTimeSlotsModal() {
+        this.generateCustomTimeSlotsInputs();
+        document.getElementById('customTimeSlotsModal').classList.remove('hidden');
+        document.body.classList.add('modal-open');
+    }
+
+    closeCustomTimeSlotsModal() {
+        document.getElementById('customTimeSlotsModal').classList.add('hidden');
+        document.body.classList.remove('modal-open');
+    }
+
+    generateCustomTimeSlotsInputs() {
+        const conventionDays = parseInt(document.getElementById('conventionDays').value) || 3;
+        const standardSlots = parseInt(document.getElementById('timeSlotsPerDay').value) || 4;
+        const standardRooms = parseInt(document.getElementById('availableRooms').value) || 10;
+        const standardSessionsPerSlot = parseInt(document.getElementById('sessionsPerTimeSlot').value) || 3;
+        const container = document.getElementById('customDailyConfigContainer');
+        
+        let inputsHTML = '';
+        
+        for (let day = 1; day <= conventionDays; day++) {
+            const currentSlots = this.customTimeSlots.get(day) || standardSlots;
+            const currentRooms = this.customRoomsPerDay.get(day) || standardRooms;
+            const currentSessionsPerSlot = this.customSessionsPerSlot.get(day) || standardSessionsPerSlot;
+            
+            inputsHTML += `
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="font-medium text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-calendar-day text-blue-600 mr-2"></i>
+                        Day ${day} Configuration
+                    </h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Time Slots -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Time Slots</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" 
+                                       id="customSlots_${day}" 
+                                       value="${currentSlots}" 
+                                       min="0" 
+                                       max="12" 
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                                <span class="text-xs text-gray-500">slots</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Available Rooms -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Available Rooms</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" 
+                                       id="customRooms_${day}" 
+                                       value="${currentRooms}" 
+                                       min="0" 
+                                       max="50" 
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                                <span class="text-xs text-gray-500">rooms</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Sessions per Time Slot -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Sessions per Slot</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" 
+                                       id="customSessionsPerSlot_${day}" 
+                                       value="${currentSessionsPerSlot}" 
+                                       min="1" 
+                                       max="20" 
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                                <span class="text-xs text-gray-500">sessions</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Day Summary -->
+                    <div class="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                        <span class="font-medium">Capacity:</span> 
+                        <span id="dayCapacity_${day}">${currentSlots * currentRooms} total room-slots, ${currentSlots * currentSessionsPerSlot} max sessions</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = inputsHTML;
+        
+        // Add event listeners for real-time capacity updates
+        for (let day = 1; day <= conventionDays; day++) {
+            const slotsInput = document.getElementById(`customSlots_${day}`);
+            const roomsInput = document.getElementById(`customRooms_${day}`);
+            const sessionsInput = document.getElementById(`customSessionsPerSlot_${day}`);
+            const capacitySpan = document.getElementById(`dayCapacity_${day}`);
+            
+            const updateCapacity = () => {
+                const slots = parseInt(slotsInput.value) || 0;
+                const rooms = parseInt(roomsInput.value) || 0;
+                const sessions = parseInt(sessionsInput.value) || 0;
+                capacitySpan.textContent = `${slots * rooms} total room-slots, ${slots * sessions} max sessions`;
+            };
+            
+            slotsInput.addEventListener('input', updateCapacity);
+            roomsInput.addEventListener('input', updateCapacity);
+            sessionsInput.addEventListener('input', updateCapacity);
+        }
+    }
+
+    applyCustomTimeSlots() {
+        const conventionDays = parseInt(document.getElementById('conventionDays').value) || 3;
+        const standardSlots = parseInt(document.getElementById('timeSlotsPerDay').value) || 4;
+        const standardRooms = parseInt(document.getElementById('availableRooms').value) || 10;
+        const standardSessionsPerSlot = parseInt(document.getElementById('sessionsPerTimeSlot').value) || 3;
+        
+        // Clear existing customizations
+        this.customTimeSlots.clear();
+        this.customRoomsPerDay.clear();
+        this.customSessionsPerSlot.clear();
+        
+        let hasCustomization = false;
+        
+        for (let day = 1; day <= conventionDays; day++) {
+            const slots = parseInt(document.getElementById(`customSlots_${day}`).value) || 0;
+            const rooms = parseInt(document.getElementById(`customRooms_${day}`).value) || 0;
+            const sessionsPerSlot = parseInt(document.getElementById(`customSessionsPerSlot_${day}`).value) || 0;
+            
+            // Check if any values differ from standard
+            if (slots !== standardSlots) {
+                hasCustomization = true;
+                this.customTimeSlots.set(day, slots);
+            }
+            
+            if (rooms !== standardRooms) {
+                hasCustomization = true;
+                this.customRoomsPerDay.set(day, rooms);
+            }
+            
+            if (sessionsPerSlot !== standardSessionsPerSlot) {
+                hasCustomization = true;
+                this.customSessionsPerSlot.set(day, sessionsPerSlot);
+            }
+        }
+        
+        // If no customization was found, ensure all maps are cleared
+        if (!hasCustomization) {
+            this.customTimeSlots.clear();
+            this.customRoomsPerDay.clear();
+            this.customSessionsPerSlot.clear();
+        }
+        
+        this.updateCustomTimeSlotsPreview();
+        this.closeCustomTimeSlotsModal();
+        this.calculateRequirements(); // Recalculate with new configuration
+    }
+
+    resetToStandardTimeSlots() {
+        if (confirm('Reset to standard daily configuration? This will remove all custom per-day settings.')) {
+            this.customTimeSlots.clear();
+            this.customRoomsPerDay.clear();
+            this.customSessionsPerSlot.clear();
+            this.updateCustomTimeSlotsPreview();
+            this.calculateRequirements();
+        }
+    }
+
+    updateCustomTimeSlotsPreview() {
+        const previewDiv = document.getElementById('customTimeSlotsPreview');
+        const breakdownDiv = document.getElementById('timeSlotsBreakdown');
+        
+        const hasCustomConfig = this.customTimeSlots.size > 0 || this.customRoomsPerDay.size > 0 || this.customSessionsPerSlot.size > 0;
+        
+        if (!hasCustomConfig) {
+            previewDiv.classList.add('hidden');
+            return;
+        }
+        
+        previewDiv.classList.remove('hidden');
+        
+        const conventionDays = parseInt(document.getElementById('conventionDays').value) || 3;
+        const standardSlots = parseInt(document.getElementById('timeSlotsPerDay').value) || 4;
+        const standardRooms = parseInt(document.getElementById('availableRooms').value) || 10;
+        const standardSessionsPerSlot = parseInt(document.getElementById('sessionsPerTimeSlot').value) || 3;
+        
+        let breakdownHTML = '';
+        let totalSlots = 0;
+        let totalCapacity = 0;
+        
+        for (let day = 1; day <= conventionDays; day++) {
+            const slots = this.customTimeSlots.get(day) || standardSlots;
+            const rooms = this.customRoomsPerDay.get(day) || standardRooms;
+            const sessionsPerSlot = this.customSessionsPerSlot.get(day) || standardSessionsPerSlot;
+            
+            totalSlots += slots;
+            totalCapacity += slots * sessionsPerSlot;
+            
+            breakdownHTML += `<div class="text-xs mb-1">
+                <span class="font-medium">Day ${day}:</span> 
+                ${slots} slots × ${rooms} rooms × ${sessionsPerSlot} sessions = <span class="font-medium">${slots * sessionsPerSlot} session capacity</span>
+            </div>`;
+        }
+        
+        breakdownHTML += `<div class="text-sm font-bold mt-2 pt-2 border-t border-blue-300">
+            Total: ${totalSlots} time slots, ${totalCapacity} max sessions
+        </div>`;
+        
+        breakdownDiv.innerHTML = breakdownHTML;
     }
 }
 
