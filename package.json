@@ -1,0 +1,28 @@
+{
+  "name": "convention-room-calculator",
+  "version": "1.0.0",
+  "description": "A comprehensive tool for calculating optimal room allocation for academic conventions",
+  "main": "index.html",
+  "scripts": {
+    "dev": "serve -s . -p 3000",
+    "build": "echo 'No build step required for static site'",
+    "start": "serve -s . -p 3000"
+  },
+  "keywords": [
+    "convention",
+    "room-calculator",
+    "academic",
+    "conference",
+    "scheduling"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/convention-room-calculator.git"
+  },
+  "homepage": "https://your-domain.com"
+}

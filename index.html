@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convention Room Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .session-editable {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .session-editable:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .edit-indicator {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .session-editable:hover .edit-indicator {
+            opacity: 1;
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        .drag-active {
+            border-style: solid !important;
+            border-width: 2px !important;
+            transform: scale(1.02);
+            transition: all 0.2s ease;
+        }
+        .paper-item:hover {
+            transform: translateY(-1px);
+        }
+        .session-dropzone.drag-over {
+            border-color: #10b981 !important;
+            background-color: #ecfdf5 !important;
+        }
+        /* Modal scroll prevention */
+        body.modal-open {
+            overflow: hidden !important;
+            position: fixed;
+            width: 100%;
+        }
+        
+        /* Assignment modal scrolling */
+        #paperAssignmentModal {
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        #availablePapersList,
+        #sessionsList {
+            scrollbar-width: auto !important;
+            scrollbar-color: #94a3b8 #f1f5f9;
+            /* Force scrollbars to always be visible */
+            overflow-y: scroll !important;
+        }
+        
+        #availablePapersList::-webkit-scrollbar,
+        #sessionsList::-webkit-scrollbar {
+            width: 16px !important;
+            height: 16px !important;
+            display: block !important;
+            visibility: visible !important;
+        }
+        
+        #availablePapersList::-webkit-scrollbar-track,
+        #sessionsList::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 8px;
+        }
+        
+        #availablePapersList::-webkit-scrollbar-thumb,
+        #sessionsList::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 8px;
+            border: 2px solid #f1f5f9;
+        }
+        
+        #availablePapersList::-webkit-scrollbar-thumb:hover,
+        #sessionsList::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        
+        #availablePapersList::-webkit-scrollbar-corner,
+        #sessionsList::-webkit-scrollbar-corner {
+            background: #f1f5f9;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">
+                <i class="fas fa-calendar-alt text-blue-600 mr-3"></i>
+                Convention Room Calculator
+            </h1>
+            <p class="text-gray-600 text-lg">Calculate optimal room allocation for your academic convention</p>
+        </header>
+
+        <!-- Main Calculator Card -->
+        <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6 mb-8">
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Input Form -->
+                <div class="space-y-6">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-cogs text-blue-600 mr-2"></i>
+                        Convention Details
+                    </h2>
+                    
+                    <form id="calculatorForm" class="space-y-4">
+                        <!-- Basic Convention Info -->
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-gray-700 mb-3">Basic Information</h3>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="conventionDays" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Convention Days
+                                    </label>
+                                    <input type="number" id="conventionDays" value="3" min="1" max="10" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="timeSlotsPerDay" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Time Slots per Day
+                                    </label>
+                                    <input type="number" id="timeSlotsPerDay" value="4" min="1" max="10" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    <label for="availableRooms" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Available Rooms at Hotel
+                                    </label>
+                                    <input type="number" id="availableRooms" value="10" min="1" max="100" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="sessionsPerTimeSlot" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Sessions per Time Slot
+                                    </label>
+                                    <input type="number" id="sessionsPerTimeSlot" value="3" min="1" max="20" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <p class="text-xs text-gray-500 mt-1">Concurrent sessions in each time slot</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Paper Presentations -->
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-file-alt text-green-600 mr-2"></i>
+                                Paper Presentations
+                            </h3>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="totalPapers" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Total Papers
+                                    </label>
+                                    <input type="number" id="totalPapers" value="60" min="0" max="1000" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="papersPerSession" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Papers per Session
+                                    </label>
+                                    <input type="number" id="papersPerSession" value="4" min="1" max="20" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    <label for="minPapersPerSession" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Min Papers/Session
+                                    </label>
+                                    <input type="number" id="minPapersPerSession" value="2" min="1" max="20" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    <p class="text-xs text-gray-500 mt-1">For smaller paper categories</p>
+                                </div>
+                                
+                                <div>
+                                    <label for="maxPapersPerSession" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Max Papers/Session
+                                    </label>
+                                    <input type="number" id="maxPapersPerSession" value="6" min="1" max="20" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    <p class="text-xs text-gray-500 mt-1">For larger paper categories</p>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <label for="papersPerRoom" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Papers per Room (concurrent presentations)
+                                </label>
+                                <input type="number" id="papersPerRoom" value="1" min="1" max="10" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                                <p class="text-xs text-gray-500 mt-1">Number of papers presented simultaneously in one room</p>
+                            </div>
+
+                            <div class="mt-4 p-3 bg-green-100 rounded-lg">
+                                <h4 class="text-sm font-medium text-green-800 mb-2">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Variable Session Sizes
+                                </h4>
+                                <p class="text-xs text-green-700">
+                                    The calculator will create sessions with varying sizes between your min/max values to optimally distribute papers across different categories and themes.
+                                </p>
+                            </div>
+
+                            <!-- Category Management -->
+                            <div class="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="font-semibold text-purple-800">
+                                        <i class="fas fa-tags text-purple-600 mr-2"></i>
+                                        Session Categories
+                                    </h4>
+                                    <button type="button" id="manageCategoriesBtn" class="text-sm bg-purple-600 text-white px-3 py-1 rounded-md hover:bg-purple-700">
+                                        Manage Categories
+                                    </button>
+                                </div>
+                                <p class="text-sm text-purple-700 mb-2">
+                                    Customize categories for your English honor society sessions.
+                                </p>
+                                <div id="categoryPreview" class="text-xs text-purple-600">
+                                    <div class="flex flex-wrap gap-1">
+                                        <!-- Categories will be displayed here -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Paper Management -->
+                            <div class="mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="font-semibold text-indigo-800">
+                                        <i class="fas fa-file-alt text-indigo-600 mr-2"></i>
+                                        Paper Details (Optional)
+                                    </h4>
+                                    <button type="button" id="managePapersBtn" class="text-sm bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700">
+                                        Manage Papers
+                                    </button>
+                                </div>
+                                <p class="text-sm text-indigo-700 mb-2">
+                                    Add specific paper titles, student names, and schools for detailed scheduling.
+                                </p>
+                                <div id="paperPreview" class="text-xs text-indigo-600">
+                                    <div id="paperSummary">
+                                        No specific papers defined yet.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Room Names Section -->
+                            <div class="mt-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="font-semibold text-orange-800">
+                                        <i class="fas fa-door-open text-orange-600 mr-2"></i>
+                                        Room Names (Optional)
+                                    </h4>
+                                    <button type="button" id="manageRoomsBtn" class="text-sm bg-orange-600 text-white px-3 py-1 rounded-md hover:bg-orange-700">
+                                        Manage Rooms
+                                    </button>
+                                </div>
+                                <p class="text-sm text-orange-700 mb-2">
+                                    Customize room names instead of generic "Room 1", "Room 2", etc.
+                                </p>
+                                <div id="roomPreview" class="text-xs text-orange-600">
+                                    <div id="roomSummary">
+                                        Using default room numbering (Room 1, Room 2, etc.)
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Moderators Management Section -->
+                            <div class="mt-4 p-4 bg-teal-50 rounded-lg border border-teal-200">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="font-semibold text-teal-800">
+                                        <i class="fas fa-user-tie text-teal-600 mr-2"></i>
+                                        Moderators Database (Optional)
+                                    </h4>
+                                    <button type="button" id="manageModeratorsBtn" class="text-sm bg-teal-600 text-white px-3 py-1 rounded-md hover:bg-teal-700">
+                                        Manage Moderators
+                                    </button>
+                                </div>
+                                <p class="text-sm text-teal-700 mb-2">
+                                    Create a database of potential moderators for easy assignment to sessions.
+                                </p>
+                                <div id="moderatorPreview" class="text-xs text-teal-600">
+                                    <div id="moderatorSummary">
+                                        No moderators defined yet.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Chairs Management Section -->
+                            <div class="mt-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="font-semibold text-emerald-800">
+                                        <i class="fas fa-user-graduate text-emerald-600 mr-2"></i>
+                                        Chairs Database (Optional)
+                                    </h4>
+                                    <button type="button" id="manageChairsBtn" class="text-sm bg-emerald-600 text-white px-3 py-1 rounded-md hover:bg-emerald-700">
+                                        Manage Chairs
+                                    </button>
+                                </div>
+                                <p class="text-sm text-emerald-700 mb-2">
+                                    Create a database of potential session chairs for easy assignment.
+                                </p>
+                                <div id="chairPreview" class="text-xs text-emerald-600">
+                                    <div id="chairSummary">
+                                        No chairs defined yet.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Round Tables -->
+                        <div class="bg-purple-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-users text-purple-600 mr-2"></i>
+                                Round Table Discussions
+                            </h3>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="totalRoundTables" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Total Round Tables
+                                    </label>
+                                    <input type="number" id="totalRoundTables" value="12" min="0" max="100" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                </div>
+                                
+                                <div>
+                                    <label for="roundTableDuration" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Sessions per Round Table
+                                    </label>
+                                    <input type="number" id="roundTableDuration" value="1" min="1" max="5" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 font-medium">
+                            <i class="fas fa-calculator mr-2"></i>
+                            Calculate Room Requirements
+                        </button>
+
+                        <!-- Time Schedule Configuration -->
+                        <div class="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="font-semibold text-yellow-800">
+                                    <i class="fas fa-clock text-yellow-600 mr-2"></i>
+                                    Time Slot Schedule
+                                </h4>
+                                <button type="button" id="configureTimeSlots" class="text-sm bg-yellow-600 text-white px-3 py-1 rounded-md hover:bg-yellow-700">
+                                    Configure Times
+                                </button>
+                            </div>
+                            <p class="text-sm text-yellow-700">
+                                Set specific times for each time slot (A, B, C, etc.) to create a detailed schedule.
+                            </p>
+                            <div id="timeSlotPreview" class="mt-3 text-xs text-yellow-600">
+                                Default times will be used until configured.
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Results Panel -->
+                <div class="space-y-6">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-chart-bar text-green-600 mr-2"></i>
+                        Results
+                    </h2>
+                    
+                    <div id="resultsContainer" class="space-y-4">
+                        <div class="bg-gray-100 p-6 rounded-lg text-center text-gray-500">
+                            <i class="fas fa-info-circle text-3xl mb-2"></i>
+                            <p>Enter your convention details and click calculate to see room requirements</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Breakdown -->
+        <div id="detailedBreakdown" class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6 hidden">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                <i class="fas fa-table text-blue-600 mr-2"></i>
+                Detailed Schedule Breakdown
+            </h2>
+            
+            <div class="grid md:grid-cols-2 gap-6 mb-8">
+                <!-- Schedule Table -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-700 mb-3">Daily Schedule</h3>
+                    <div id="scheduleTable" class="overflow-x-auto">
+                        <!-- Table will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Room Utilization Chart -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-700 mb-3">Room Utilization</h3>
+                    <div style="height: 300px;">
+                        <canvas id="utilizationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Session Breakdown Grid -->
+            <div class="mt-8">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-semibold text-gray-800">
+                        <i class="fas fa-calendar-week text-purple-600 mr-2"></i>
+                        Session Schedule Breakdown
+                    </h3>
+                    <div class="flex space-x-2">
+                        <button id="assignPapersBtn" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 font-medium">
+                            <i class="fas fa-tasks mr-2"></i>
+                            Assign Papers
+                        </button>
+                        <button id="resetCustomizations" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition duration-200 font-medium">
+                            <i class="fas fa-undo mr-2"></i>
+                            Reset All
+                        </button>
+                        <button id="exportPDF" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-200 font-medium">
+                            <i class="fas fa-file-pdf mr-2"></i>
+                            Export PDF
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Customization Summary -->
+                <div id="customizationSummary" class="mb-4 hidden">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <i class="fas fa-edit text-blue-600 mr-2"></i>
+                                <span class="font-medium text-blue-800">Session Customizations Active</span>
+                            </div>
+                            <span id="customizationCount" class="text-sm text-blue-600 font-medium"></span>
+                        </div>
+                        <p class="text-sm text-blue-700 mt-1">
+                            Click on any session below to edit paper count, category, room assignment, or add special notes.
+                        </p>
+                    </div>
+                </div>
+                
+                <div id="sessionBreakdown" class="space-y-6">
+                    <!-- Session breakdown will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Tips and Guidelines -->
+        <div class="max-w-4xl mx-auto bg-blue-50 rounded-lg p-6 mt-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">
+                <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+                Planning Tips
+            </h2>
+            <div class="grid md:grid-cols-2 gap-4 text-sm text-gray-700">
+                <div>
+                    <h3 class="font-medium mb-2">Room Allocation</h3>
+                    <ul class="space-y-1 list-disc list-inside">
+                        <li>Consider room capacity when assigning sessions</li>
+                        <li>Leave buffer rooms for technical issues or overflow</li>
+                        <li>Group similar session types in nearby rooms</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-medium mb-2">Scheduling</h3>
+                    <ul class="space-y-1 list-disc list-inside">
+                        <li>Allow 15-30 minutes between sessions for transitions</li>
+                        <li>Schedule high-attendance sessions in larger rooms</li>
+                        <li>Consider parallel sessions to maximize attendance</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paper Assignment Modal -->
+    <div id="paperAssignmentModal" class="fixed inset-0 z-50 hidden" style="background-color: rgba(0, 0, 0, 0.5); overflow: hidden;">
+        <div style="position: fixed; top: 5%; left: 5%; right: 5%; bottom: 5%; background: white; border-radius: 8px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; overflow: hidden;" onclick="event.stopPropagation()">
+            
+            <!-- Header -->
+            <div style="padding: 24px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <h3 style="font-size: 18px; font-weight: 600; color: #374151; margin: 0;">
+                        <i class="fas fa-tasks" style="color: #059669; margin-right: 8px;"></i>
+                        Assign Papers to Sessions
+                    </h3>
+                    <button id="closePaperAssignmentModal" style="background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 20px; padding: 4px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div style="flex: 1; padding: 24px; overflow: hidden; display: flex; gap: 24px;">
+                
+                <!-- Available Papers Column -->
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <!-- Column Header -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                        <h4 style="font-size: 16px; font-weight: 500; color: #374151; margin: 0;">
+                            <i class="fas fa-file-alt" style="color: #2563eb; margin-right: 8px;"></i>
+                            Available Papers
+                        </h4>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <select id="filterByCategory" style="font-size: 12px; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+                                <option value="">All Categories</option>
+                            </select>
+                            <span id="availablePapersCount" style="font-size: 12px; color: #6b7280; background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">0 papers</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Scrollable Papers List -->
+                    <div style="flex: 1; min-height: 300px; border: 1px solid #d1d5db; border-radius: 8px; background: #f9fafb; position: relative;">
+                        <div id="availablePapersList" style="height: 100%; min-height: 300px; padding: 16px; overflow-y: scroll; overflow-x: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: auto;" tabindex="0">
+                            <!-- Available papers will be listed here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Paper Sessions Column -->
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <!-- Column Header -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                        <h4 style="font-size: 16px; font-weight: 500; color: #374151; margin: 0;">
+                            <i class="fas fa-calendar-alt" style="color: #7c3aed; margin-right: 8px;"></i>
+                            Paper Sessions
+                        </h4>
+                        <span id="totalSessionsCount" style="font-size: 12px; color: #6b7280; background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">0 sessions</span>
+                    </div>
+                    
+                    <!-- Scrollable Sessions List -->
+                    <div style="flex: 1; min-height: 300px; border: 1px solid #d1d5db; border-radius: 8px; background: #f9fafb; position: relative;">
+                        <div id="sessionsList" style="height: 100%; min-height: 300px; padding: 16px; overflow-y: scroll; overflow-x: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: auto;" tabindex="0">
+                            <!-- Sessions will be listed here -->
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <!-- Footer -->
+            <div style="padding: 24px; border-top: 1px solid #e5e7eb; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 14px; color: #6b7280;">
+                    <span id="assignedPapersCount">0</span> papers assigned to sessions
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button id="autoAssignPapers" style="padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                        <i class="fas fa-magic" style="margin-right: 4px;"></i>
+                        Auto Assign
+                    </button>
+                    <button id="clearAllAssignments" style="padding: 8px 16px; background: #d97706; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                        <i class="fas fa-eraser" style="margin-right: 4px;"></i>
+                        Clear All
+                    </button>
+                    <button id="cancelPaperAssignment" style="padding: 8px 16px; background: none; color: #6b7280; border: none; cursor: pointer; font-weight: 500;">
+                        Cancel
+                    </button>
+                    <button id="savePaperAssignments" style="padding: 12px 24px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                        <i class="fas fa-save" style="margin-right: 4px;"></i>
+                        Save Assignments
+                    </button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Paper Management Modal -->
+    <div id="paperModal" class="fixed inset-0 z-50 hidden modal-overlay">
+        <div class="flex items-center justify-center min-h-screen px-4 py-8">
+            <div class="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            <i class="fas fa-file-alt text-indigo-600 mr-2"></i>
+                            Manage Paper Details
+                        </h3>
+                        <button id="closePaperModal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 flex-1 overflow-y-auto">
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-sm text-gray-600">Add specific paper details for professional scheduling and programs.</p>
+                            <div class="flex space-x-2">
+                                <button id="importPapersBtn" class="text-sm bg-green-100 text-green-700 px-3 py-1 rounded-md hover:bg-green-200">
+                                    <i class="fas fa-upload mr-1"></i>Import CSV
+                                </button>
+                                <button id="exportPapersBtn" class="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200">
+                                    <i class="fas fa-download mr-1"></i>Export CSV
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Add New Paper -->
+                        <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                            <h4 class="font-medium text-gray-800 mb-3">Add New Paper</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                                <div>
+                                    <input type="text" id="newPaperTitle" placeholder="Paper title" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                                </div>
+                                <div>
+                                    <input type="text" id="newStudentName" placeholder="Student name" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                                </div>
+                                <div>
+                                    <input type="text" id="newSchoolName" placeholder="School/University" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                                </div>
+                                <div>
+                                    <select id="newPaperCategory" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                                        <!-- Categories will be populated -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="flex justify-end">
+                                <button id="addPaperBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm">
+                                    <i class="fas fa-plus mr-2"></i>Add Paper
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Papers by Category -->
+                        <div id="papersByCategory" class="space-y-4">
+                            <!-- Papers will be organized by category here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-between items-center flex-shrink-0">
+                    <div class="text-sm text-gray-600">
+                        <span id="totalPapersCount">0</span> papers added
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="cancelPaperConfig" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition duration-200">
+                            Cancel
+                        </button>
+                        <button id="savePaperConfig" class="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-medium transition duration-200 shadow-lg">
+                            <i class="fas fa-save mr-2"></i>
+                            Save Papers
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Management Modal -->
+    <div id="categoryModal" class="fixed inset-0 z-50 hidden modal-overlay">
+        <div class="flex items-center justify-center min-h-screen px-4 py-8">
+            <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            <i class="fas fa-tags text-purple-600 mr-2"></i>
+                            Manage Session Categories
+                        </h3>
+                        <button id="closeCategoryModal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 flex-1 overflow-y-auto">
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-sm text-gray-600">Define categories for your English honor society paper sessions.</p>
+                            <button id="loadDefaultCategories" class="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200">
+                                Load English Defaults
+                            </button>
+                        </div>
+                        
+                        <!-- Add New Category -->
+                        <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                            <h4 class="font-medium text-gray-800 mb-3">Add New Category</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                <div>
+                                    <input type="text" id="newCategoryName" placeholder="Category name (e.g., Medieval Literature)" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm">
+                                </div>
+                                <div>
+                                    <input type="number" id="newCategoryPapers" placeholder="# Papers" min="0" max="1000" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm">
+                                </div>
+                                <div>
+                                    <select id="newCategoryColor" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm">
+                                        <option value="blue">Blue</option>
+                                        <option value="green">Green</option>
+                                        <option value="purple">Purple</option>
+                                        <option value="red">Red</option>
+                                        <option value="yellow">Yellow</option>
+                                        <option value="indigo">Indigo</option>
+                                        <option value="pink">Pink</option>
+                                        <option value="gray">Gray</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <button id="addCategoryBtn" class="w-full px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm">
+                                        <i class="fas fa-plus mr-2"></i>Add
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Paper Distribution -->
+                    <div class="mb-6">
+                        <h4 class="font-medium text-gray-800 mb-3">Paper Distribution by Category</h4>
+                        <div class="bg-blue-50 p-4 rounded-lg mb-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium text-blue-800">Total Papers Assigned:</span>
+                                <span id="totalAssignedPapers" class="text-lg font-bold text-blue-600">0</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-blue-800">Target Total (from main form):</span>
+                                <span id="targetTotalPapers" class="text-lg font-bold text-blue-600">60</span>
+                            </div>
+                        </div>
+                        <div id="paperDistributionList" class="space-y-2">
+                            <!-- Paper distribution will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Current Categories List -->
+                    <div>
+                        <h4 class="font-medium text-gray-800 mb-3">Current Categories</h4>
+                        <div id="categoriesList" class="space-y-2">
+                            <!-- Categories will be populated here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-2 flex-shrink-0">
+                    <button id="cancelCategoryConfig" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition duration-200">
+                        Cancel
+                    </button>
+                    <button id="saveCategoryConfig" class="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium transition duration-200 shadow-lg">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Categories
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time Slot Configuration Modal -->
+    <div id="timeSlotModal" class="fixed inset-0 z-50 hidden modal-overlay">
+        <div class="flex items-center justify-center min-h-screen px-4 py-8">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            <i class="fas fa-clock text-blue-600 mr-2"></i>
+                            Configure Time Slots
+                        </h3>
+                        <button id="closeTimeModal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 flex-1 overflow-y-auto">
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-sm text-gray-600">Set start times for each time slot across all convention days.</p>
+                            <button id="autoGenerateTimes" class="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-md hover:bg-blue-200">
+                                Auto Generate
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="sessionDuration" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Session Duration (minutes)
+                                </label>
+                                <input type="number" id="sessionDuration" value="90" min="30" max="180" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label for="breakDuration" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Break Duration (minutes)
+                                </label>
+                                <input type="number" id="breakDuration" value="15" min="0" max="60" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="timeSlotInputs" class="space-y-3">
+                        <!-- Time slot inputs will be generated here -->
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-2 flex-shrink-0">
+                    <button id="cancelTimeConfig" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition duration-200">
+                        Cancel
+                    </button>
+                    <button id="saveTimeConfig" class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium transition duration-200 shadow-lg">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Time Schedule
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session Edit Modal -->
+    <div id="sessionEditModal" class="fixed inset-0 z-50 hidden modal-overlay">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            <i class="fas fa-edit text-blue-600 mr-2"></i>
+                            Edit Session
+                        </h3>
+                        <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Session Information
+                            </label>
+                            <div id="sessionInfo" class="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
+                                <!-- Session info will be populated -->
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="editPaperCount" class="block text-sm font-medium text-gray-700 mb-1">
+                                Number of Papers
+                            </label>
+                            <input type="number" id="editPaperCount" min="1" max="20" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="editCategory" class="block text-sm font-medium text-gray-700 mb-1">
+                                Session Category
+                            </label>
+                            <select id="editCategorySelect" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2">
+                                <!-- Categories will be populated dynamically -->
+                            </select>
+                            <input type="text" id="editCategoryCustom" placeholder="Enter custom category..." 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 hidden">
+                        </div>
+                        
+                        <div>
+                            <label for="editRoom" class="block text-sm font-medium text-gray-700 mb-1">
+                                Preferred Room (Optional)
+                            </label>
+                            <input type="text" id="editRoom" placeholder="e.g., Room A, Conference Hall 1" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="editNotes" class="block text-sm font-medium text-gray-700 mb-1">
+                                Special Notes (Optional)
+                            </label>
+                            <textarea id="editNotes" rows="2" placeholder="Special requirements, equipment needs, etc." 
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        </div>
+
+                        <!-- Session Leadership -->
+                        <div class="border-t border-gray-200 pt-4">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">
+                                <i class="fas fa-users text-indigo-600 mr-2"></i>
+                                Session Leadership (Optional)
+                            </h4>
+                            
+                            <!-- Moderator -->
+                            <div class="mb-3">
+                                <label for="editModeratorSelect" class="block text-xs font-medium text-gray-600 mb-1">
+                                    Moderator
+                                </label>
+                                <select id="editModeratorSelect" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm mb-2">
+                                    <option value="">Select moderator or enter custom...</option>
+                                    <!-- Moderators will be populated dynamically -->
+                                </select>
+                                <div id="customModeratorInputs" class="grid grid-cols-2 gap-3 hidden">
+                                    <input type="text" id="editModeratorName" placeholder="Moderator name" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                                    <input type="text" id="editModeratorSchool" placeholder="Institution" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                                </div>
+                            </div>
+                            
+                            <!-- Chair -->
+                            <div>
+                                <label for="editChairSelect" class="block text-xs font-medium text-gray-600 mb-1">
+                                    Chair
+                                </label>
+                                <select id="editChairSelect" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm mb-2">
+                                    <option value="">Select chair or enter custom...</option>
+                                    <!-- Chairs will be populated dynamically -->
+                                </select>
+                                <div id="customChairInputs" class="grid grid-cols-2 gap-3 hidden">
+                                    <input type="text" id="editChairName" placeholder="Chair name" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                                    <input type="text" id="editChairSchool" placeholder="Institution" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Paper Details (if available) -->
+                        <div id="sessionPaperDetails" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Papers in this Session
+                            </label>
+                            <div id="sessionPapersList" class="max-h-32 overflow-y-auto border border-gray-200 rounded-md p-3 bg-gray-50">
+                                <!-- Paper details will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-2">
+                    <button id="cancelEdit" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
+                        Cancel
+                    </button>
+                    <button id="saveSession" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Room Management Modal -->
+    <div id="roomModal" class="fixed inset-0 z-50 hidden modal-overlay">
+        <div class="flex items-center justify-center min-h-screen px-4 py-8">
+            <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            <i class="fas fa-door-open text-orange-600 mr-2"></i>
+                            Manage Room Names
+                        </h3>
+                        <button id="closeRoomModal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 flex-1 overflow-y-auto">
+                    <div class="mb-6">
+                        <p class="text-sm text-gray-600 mb-4">
+                            Customize room names to match your actual venue. Changes will be reflected throughout the schedule.
+                        </p>
+                        
+                        <div id="roomNamesContainer" class="space-y-3">
+                            <!-- Room name inputs will be dynamically generated here -->
+                        </div>
+                        
+                        <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-medium text-gray-800 mb-2">
+                                <i class="fas fa-info-circle text-blue-500 mr-2"></i>
+                                Tips for Room Names
+                            </h4>
+                            <ul class="text-sm text-gray-600 space-y-1">
+                                <li>• Use descriptive names like "Conference Hall A", "Auditorium", "Meeting Room 101"</li>
+                                <li>• Keep names reasonably short for better display in schedules</li>
+                                <li>• Leave blank to use default "Room X" naming</li>
+                                <li>• Changes apply immediately to all sessions and exports</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-2">
+                    <button id="resetRoomNames" class="px-4 py-2 text-orange-600 hover:text-orange-800 font-medium">
+                        <i class="fas fa-undo mr-2"></i>
+                        Reset to Defaults
+                    </button>
+                    <button id="cancelRoomEdit" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
+                        Cancel
+                    </button>
+                    <button id="saveRoomNames" class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 font-medium">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Room Names
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Moderator Management Modal -->
+    <div id="moderatorModal" class="fixed inset-0 z-50 hidden modal-overlay">
+        <div class="flex items-center justify-center min-h-screen px-4 py-8">
+            <div class="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            <i class="fas fa-user-tie text-teal-600 mr-2"></i>
+                            Manage Moderators
+                        </h3>
+                        <button id="closeModeratorModal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 flex-1 overflow-y-auto">
+                    <div class="mb-6">
+                        <p class="text-sm text-gray-600 mb-4">Add potential moderators to easily assign them to sessions.</p>
+                        
+                        <!-- Add New Moderator -->
+                        <div class="bg-teal-50 p-4 rounded-lg mb-4">
+                            <h4 class="font-medium text-teal-800 mb-3">Add New Moderator</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                                <div>
+                                    <input type="text" id="newModeratorName" placeholder="Full name" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm">
+                                </div>
+                                <div>
+                                    <input type="text" id="newModeratorSchool" placeholder="Institution/School" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm">
+                                </div>
+                                <div>
+                                    <input type="email" id="newModeratorEmail" placeholder="Email (optional)" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm">
+                                </div>
+                                <div>
+                                    <input type="text" id="newModeratorBio" placeholder="Title/Bio (optional)" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm">
+                                </div>
+                            </div>
+                            <div class="flex justify-end">
+                                <button id="addModeratorBtn" class="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 text-sm">
+                                    <i class="fas fa-plus mr-2"></i>Add Moderator
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Moderators List -->
+                        <div id="moderatorsList" class="space-y-3">
+                            <!-- Moderators will be listed here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-2">
+                    <button id="cancelModeratorEdit" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chair Management Modal -->
+    <div id="chairModal" class="fixed inset-0 z-50 hidden modal-overlay">
+        <div class="flex items-center justify-center min-h-screen px-4 py-8">
+            <div class="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            <i class="fas fa-user-graduate text-emerald-600 mr-2"></i>
+                            Manage Chairs
+                        </h3>
+                        <button id="closeChairModal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 flex-1 overflow-y-auto">
+                    <div class="mb-6">
+                        <p class="text-sm text-gray-600 mb-4">Add potential session chairs to easily assign them to sessions.</p>
+                        
+                        <!-- Add New Chair -->
+                        <div class="bg-emerald-50 p-4 rounded-lg mb-4">
+                            <h4 class="font-medium text-emerald-800 mb-3">Add New Chair</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                                <div>
+                                    <input type="text" id="newChairName" placeholder="Full name" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                                </div>
+                                <div>
+                                    <input type="text" id="newChairSchool" placeholder="Institution/School" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                                </div>
+                                <div>
+                                    <input type="email" id="newChairEmail" placeholder="Email (optional)" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                                </div>
+                                <div>
+                                    <input type="text" id="newChairBio" placeholder="Title/Bio (optional)" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                                </div>
+                            </div>
+                            <div class="flex justify-end">
+                                <button id="addChairBtn" class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 text-sm">
+                                    <i class="fas fa-plus mr-2"></i>Add Chair
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Chairs List -->
+                        <div id="chairsList" class="space-y-3">
+                            <!-- Chairs will be listed here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-2">
+                    <button id="cancelChairEdit" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input for CSV import -->
+    <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+
+    <script src="js/supabase-config.js"></script>
+    <script src="js/calculator.js"></script>
+</body>
+</html>
