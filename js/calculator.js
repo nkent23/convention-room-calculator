@@ -698,10 +698,9 @@ class ConventionRoomCalculator {
                             <div class="grid gap-2">
                     `;
                     
-                    // Track if we've added a round table in this time slot
-                    let roundTableAddedInSlot = false;
+
                     
-                    // Generate individual sessions for this time slot with one round table per slot
+                    // Generate individual sessions for this time slot - prioritize paper sessions first
                     let actualSessionsAdded = 0;
                     for (let s = 0; s < sessionsInThisSlot && (paperSessionCount < results.paperSessions || roundTableCount < results.roundTableSessions); s++) {
                         let sessionType, sessionTitle, sessionColor, sessionIcon;
@@ -710,20 +709,8 @@ class ConventionRoomCalculator {
                         const remainingPaperSessions = results.paperSessions - paperSessionCount;
                         const remainingRoundTables = results.roundTableSessions - roundTableCount;
                         
-                        // Priority: Add exactly one round table per time slot when available
-                        const shouldAddRoundTable = remainingRoundTables > 0 && 
-                                                   !roundTableAddedInSlot && 
-                                                   (s === 0 || remainingPaperSessions === 0); // First session in slot or no more papers
-                        
-                        if (shouldAddRoundTable && roundTableCount < results.roundTableSessions) {
-                            sessionType = 'Round Table';
-                            const roundTableId = roundTableCount + 1;
-                            sessionTitle = this.getSessionLabel('round_table', roundTableId);
-                            sessionColor = 'purple';
-                            sessionIcon = 'users';
-                            roundTableCount++;
-                            roundTableAddedInSlot = true;
-                        } else if (paperSessionCount < results.paperSessions) {
+                        // Priority: Add paper sessions first, then round tables at the end
+                        if (paperSessionCount < results.paperSessions) {
                             sessionType = 'Paper';
                             const sessionInfo = results.sessionDistribution.sessions[paperSessionCount];
                             const paperSessionId = paperSessionCount + 1;
@@ -750,15 +737,14 @@ class ConventionRoomCalculator {
                             }
                             
                             paperSessionCount++;
-                        } else if (roundTableCount < results.roundTableSessions && !roundTableAddedInSlot) {
-                            // Fallback: add remaining round tables if no papers left
+                        } else if (roundTableCount < results.roundTableSessions) {
+                            // Add round tables after all paper sessions are placed
                             sessionType = 'Round Table';
                             const roundTableId = roundTableCount + 1;
                             sessionTitle = this.getSessionLabel('round_table', roundTableId);
                             sessionColor = 'purple';
                             sessionIcon = 'users';
                             roundTableCount++;
-                            roundTableAddedInSlot = true;
                         } else {
                             // Skip if no sessions left to add
                             continue;
@@ -4131,4 +4117,5 @@ class ConventionRoomCalculator {
 let calculator;
 document.addEventListener('DOMContentLoaded', () => {
     calculator = new ConventionRoomCalculator();
+    window.calculator = calculator; // Make it globally accessible for debugging
 });
