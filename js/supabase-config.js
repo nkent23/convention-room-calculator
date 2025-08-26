@@ -345,6 +345,77 @@ class SupabaseConfig {
         });
         return assignmentsMap;
     }
+
+    // Convention Management Methods
+    async saveNamedConvention(conventionData) {
+        const { data, error } = await this.supabase
+            .from('conventions')
+            .upsert([{
+                id: this.generateUUID(),
+                ...conventionData
+            }]);
+        
+        if (error) {
+            console.error('Error saving named convention:', error);
+            throw error;
+        }
+        return data;
+    }
+
+    async loadAllConventions() {
+        const { data, error } = await this.supabase
+            .from('conventions')
+            .select('id, name, days, total_papers, total_round_tables, created_at, updated_at')
+            .order('updated_at', { ascending: false });
+        
+        if (error) {
+            console.error('Error loading all conventions:', error);
+            throw error;
+        }
+        return data || [];
+    }
+
+    async loadConventionById(conventionId) {
+        const { data, error } = await this.supabase
+            .from('conventions')
+            .select('*')
+            .eq('id', conventionId)
+            .single();
+        
+        if (error) {
+            console.error('Error loading convention by ID:', error);
+            throw error;
+        }
+        
+        // Set this as the current convention ID for loading related data
+        this.currentConventionId = conventionId;
+        localStorage.setItem('currentConventionId', conventionId);
+        
+        return data;
+    }
+
+    async deleteConvention(conventionId) {
+        // Delete all related data first (cascade delete)
+        await Promise.all([
+            this.supabase.from('room_names').delete().eq('convention_id', conventionId),
+            this.supabase.from('papers').delete().eq('convention_id', conventionId),
+            this.supabase.from('sessions').delete().eq('convention_id', conventionId),
+            this.supabase.from('moderators').delete().eq('convention_id', conventionId),
+            this.supabase.from('chairs').delete().eq('convention_id', conventionId),
+            this.supabase.from('paper_assignments').delete().eq('convention_id', conventionId)
+        ]);
+
+        // Delete the convention itself
+        const { error } = await this.supabase
+            .from('conventions')
+            .delete()
+            .eq('id', conventionId);
+        
+        if (error) {
+            console.error('Error deleting convention:', error);
+            throw error;
+        }
+    }
 }
 
 // Global instance
