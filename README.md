@@ -17,13 +17,14 @@ A comprehensive web application for planning and organizing academic conference 
 - **Session Customization**: Edit individual sessions with custom names, moderators, chairs, rooms, and notes
 
 ### Advanced Scheduling Features
+- **Manual Position Control**: All session positions start empty for complete manual control
 - **Mixed Session Scheduling**: Full support for combining round tables and paper sessions within the same time slot
 - **Position-Specific Placement**: Individual control over each session position within time slots (Position 1, 2, 3, etc.)
-- **Manual Round Table Placement**: Click-to-select interface for placing round tables into specific positions
-- **Flexible Session Assignment**: Choose between round table or paper session for any available position
-- **Interactive Modal Selection**: Multi-level modal system for session type selection and specific assignment
-- **Unassigned Round Tables Pool**: Visual pool of unassigned round tables with click-to-place functionality
-- **Dual Selection Methods**: Click on round tables to choose placement, or click on empty positions to assign content
+- **Interactive Session Assignment**: Click any empty position to choose between round table or paper session
+- **Session Modification**: Edit or remove any assigned session with built-in action buttons
+- **Auto-Populate Option**: Optional intelligent auto-population with round tables placed in end positions
+- **Multi-level Modal System**: Step-by-step session type selection and specific assignment process
+- **Real-time Visual Feedback**: Clear positioning indicators and session status updates
 - **Position-based Validation**: Prevents conflicts by tracking assignments at the individual position level
 - **Round Table Customization**: Full customization of round table names and participant details (up to 7 participants per table)
 
@@ -124,12 +125,13 @@ A comprehensive web application for planning and organizing academic conference 
    - ✅ Modal-based editing interface with conditional field display
    - ✅ Data persistence and session state management
 
-3. **Mixed Session Positioning** ✅
-   - ✅ Position-specific session assignment within time slots
-   - ✅ Support for mixed round table and paper sessions in same time slot
-   - ✅ Individual position control (Position 1, 2, 3, etc.)
-   - ✅ Interactive modal system for session type selection
-   - ✅ Flexible assignment of any session type to any available position
+3. **Manual Position Control System** ✅
+   - ✅ All positions start empty for complete manual control
+   - ✅ Click-to-assign interface for each individual position
+   - ✅ Session modification with edit/remove buttons on each assigned session
+   - ✅ Mixed round table and paper sessions within same time slot
+   - ✅ Auto-populate option with intelligent placement (round tables at end positions)
+   - ✅ Real-time position tracking and conflict prevention
 
 3. **Enhanced Visual Feedback**
    - Improve drag-and-drop visual indicators for paper assignments
@@ -216,7 +218,7 @@ A comprehensive web application for planning and organizing academic conference 
 3. **Add Papers**: Use the "Manage Papers" button to add individual papers or import from CSV
 4. **Set Up Round Tables**: Configure the number of round tables needed
 5. **Calculate Schedule**: The system automatically generates the initial schedule
-6. **Manual Placement**: Click on empty position slots to choose session type (round table or paper), then select specific options. Mixed scheduling allows any combination within time slots
+6. **Manual Placement**: All positions start empty. Click any position to assign session type, or use "Auto-Populate" for intelligent assignment with round tables at end positions. Full modification capabilities available.
 7. **Customize Sessions**: Click on any session to edit details, assign moderators, or add notes
 8. **Export Results**: Generate PDF schedules or export data for external use
 
