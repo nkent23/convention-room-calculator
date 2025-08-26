@@ -753,7 +753,12 @@ class ConventionRoomCalculator {
                         } else if (assignedPaper) {
                             // Render assigned paper session
                             const sessionInfo = assignedPaper;
-                            const sessionTitle = sessionInfo.title || `Paper Session ${sessionInfo.sessionNumber}`;
+                            
+                            // Get the custom title if available, otherwise use stored title or default
+                            const customTitle = this.getSessionLabel('paper_session', sessionInfo.sessionNumber);
+                            const sessionTitle = customTitle !== `Paper Session ${sessionInfo.sessionNumber}` 
+                                ? customTitle 
+                                : (sessionInfo.title || `Paper Session ${sessionInfo.sessionNumber}`);
                             
                             // Create session data for editing
                             const sessionData = {
@@ -1251,10 +1256,13 @@ class ConventionRoomCalculator {
             nextSessionNumber++;
         }
         
+        // Get custom title if available
+        const customTitle = this.getSessionLabel('paper_session', nextSessionNumber);
+        
         // Create paper session data
         const paperSession = {
             sessionNumber: nextSessionNumber,
-            title: `Paper Session ${nextSessionNumber}`,
+            title: customTitle,
             paperCount: 4,
             category: null,
             color: 'green'
@@ -2193,12 +2201,32 @@ class ConventionRoomCalculator {
         let finalTitle = sessionTitle;
         let finalColor = sessionColor;
         
+        // First, check for custom session labels (from session labels management)
+        if (displayData.type === 'paper') {
+            const customLabel = this.getSessionLabel('paper_session', displayData.sessionNumber);
+            if (customLabel !== `Paper Session ${displayData.sessionNumber}`) {
+                // Use custom label with paper count
+                const paperCount = (customSession && customSession.paperCount) || displayData.paperCount || 4;
+                finalTitle = `${customLabel} (${paperCount} papers)`;
+            } else {
+                // Even if no custom label, ensure we show the right paper count
+                const paperCount = (customSession && customSession.paperCount) || displayData.paperCount || 4;
+                finalTitle = `Paper Session ${displayData.sessionNumber} (${paperCount} papers)`;
+            }
+        } else if (displayData.type === 'round table') {
+            const customLabel = this.getSessionLabel('round_table', displayData.sessionNumber);
+            if (customLabel !== `Round Table ${displayData.sessionNumber}`) {
+                finalTitle = customLabel;
+            }
+        }
+        
+        // Apply session customizations (from individual session editing)
         if (customSession) {
-            if (customSession.type === 'paper') {
-                finalTitle = `Paper Session ${customSession.sessionNumber} (${customSession.paperCount} papers)`;
-            } else if (customSession.type === 'round table' && customSession.customName) {
+            // Round table custom names from session editing take precedence over session labels
+            if (customSession.type === 'round table' && customSession.customName) {
                 finalTitle = customSession.customName;
             }
+            // Set color to indicate customization
             finalColor = customSession.isCustomized ? 'blue' : sessionColor;
         }
         
@@ -2364,11 +2392,21 @@ class ConventionRoomCalculator {
         const summaryDiv = document.getElementById('customizationSummary');
         const countSpan = document.getElementById('customizationCount');
         
-        const customCount = this.customSessions.size;
+        const customSessionCount = this.customSessions.size;
+        const customLabelCount = this.customSessionLabels.size;
+        const totalCustomizations = customSessionCount + customLabelCount;
         
-        if (customCount > 0) {
+        if (totalCustomizations > 0) {
             summaryDiv.classList.remove('hidden');
-            countSpan.textContent = `${customCount} session${customCount > 1 ? 's' : ''} customized`;
+            let summaryText = '';
+            if (customSessionCount > 0 && customLabelCount > 0) {
+                summaryText = `${customSessionCount} session${customSessionCount > 1 ? 's' : ''} customized, ${customLabelCount} custom name${customLabelCount > 1 ? 's' : ''}`;
+            } else if (customSessionCount > 0) {
+                summaryText = `${customSessionCount} session${customSessionCount > 1 ? 's' : ''} customized`;
+            } else if (customLabelCount > 0) {
+                summaryText = `${customLabelCount} custom session name${customLabelCount > 1 ? 's' : ''}`;
+            }
+            countSpan.textContent = summaryText;
         } else {
             summaryDiv.classList.add('hidden');
         }
@@ -4998,6 +5036,7 @@ class ConventionRoomCalculator {
 
         // Refresh displays
         this.generateDetailedBreakdown(this.currentResults);
+        this.updateCustomizationSummary();
     }
 
     resetSessionLabels() {
