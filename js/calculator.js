@@ -2174,8 +2174,8 @@ class ConventionRoomCalculator {
         this.generateDetailedBreakdown(this.currentResults);
         this.updateCustomizationSummary();
         
-        // Auto-save changes
-        this.saveDataToSupabase().catch(error => {
+        // Auto-save changes to current convention
+        this.saveToCurrentConvention().catch(error => {
             console.error('Auto-save failed:', error);
         });
     }
@@ -5060,6 +5060,28 @@ class ConventionRoomCalculator {
         }
 
         const formData = this.getFormData();
+        
+        // Serialize all the complex data structures
+        const sessionAssignmentsData = {};
+        this.roundTableAssignments.forEach((assignment, roundTableId) => {
+            sessionAssignmentsData[`roundtable_${roundTableId}`] = assignment;
+        });
+        
+        const paperAssignmentsData = {};
+        this.paperSessionAssignments.forEach((session, positionKey) => {
+            paperAssignmentsData[positionKey] = session;
+        });
+        
+        const customSessionsData = {};
+        this.customSessions.forEach((session, sessionKey) => {
+            customSessionsData[sessionKey] = session;
+        });
+        
+        const customLabelsData = {};
+        this.customSessionLabels.forEach((label, sessionKey) => {
+            customLabelsData[sessionKey] = label;
+        });
+        
         const conventionData = {
             name: conventionName,
             days: formData.conventionDays,
@@ -5072,15 +5094,27 @@ class ConventionRoomCalculator {
             max_papers_per_session: formData.maxPapersPerSession,
             total_round_tables: formData.totalRoundTables,
             round_table_duration: formData.roundTableDuration,
+            // Save the complex session data as JSON
+            round_table_assignments: JSON.stringify(sessionAssignmentsData),
+            paper_session_assignments: JSON.stringify(paperAssignmentsData),
+            custom_sessions: JSON.stringify(customSessionsData),
+            custom_session_labels: JSON.stringify(customLabelsData),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
 
-        // Save to Supabase with the specific name
-        await window.supabaseConfig.saveNamedConvention(conventionData);
+        // Save to Supabase with the specific name and session data
+        const conventionId = await window.supabaseConfig.saveNamedConvention(conventionData);
         
-        // Also save all related data
+        // Temporarily switch to this convention ID to save related data
+        const originalConventionId = window.supabaseConfig.currentConventionId;
+        window.supabaseConfig.currentConventionId = conventionId;
+        
+        // Save all related data (papers, room names, etc.)
         await this.saveDataToSupabase();
+        
+        // Restore original convention ID
+        window.supabaseConfig.currentConventionId = originalConventionId;
     }
 
     async openConventionListModal() {
@@ -5196,9 +5230,67 @@ class ConventionRoomCalculator {
             // Load the specific convention
             const conventionData = await window.supabaseConfig.loadConventionById(conventionId);
             if (conventionData) {
+                // Clear existing data first
+                this.customSessions.clear();
+                this.roundTableAssignments.clear();
+                this.paperSessionAssignments.clear();
+                this.customSessionLabels.clear();
+                
+                // Populate form with basic data
                 this.populateFormFromData(conventionData);
-                await this.loadDataFromSupabase(); // Load all related data
-                this.calculateRequirements(); // Recalculate with loaded data
+                
+                // Restore session assignments and customizations
+                if (conventionData.round_table_assignments) {
+                    try {
+                        const roundTableData = JSON.parse(conventionData.round_table_assignments);
+                        Object.entries(roundTableData).forEach(([key, assignment]) => {
+                            const roundTableId = parseInt(key.replace('roundtable_', ''));
+                            this.roundTableAssignments.set(roundTableId, assignment);
+                        });
+                    } catch (e) {
+                        console.error('Error parsing round table assignments:', e);
+                    }
+                }
+                
+                if (conventionData.paper_session_assignments) {
+                    try {
+                        const paperSessionData = JSON.parse(conventionData.paper_session_assignments);
+                        Object.entries(paperSessionData).forEach(([positionKey, session]) => {
+                            this.paperSessionAssignments.set(positionKey, session);
+                        });
+                    } catch (e) {
+                        console.error('Error parsing paper session assignments:', e);
+                    }
+                }
+                
+                if (conventionData.custom_sessions) {
+                    try {
+                        const customSessionData = JSON.parse(conventionData.custom_sessions);
+                        Object.entries(customSessionData).forEach(([sessionKey, session]) => {
+                            this.customSessions.set(sessionKey, session);
+                        });
+                    } catch (e) {
+                        console.error('Error parsing custom sessions:', e);
+                    }
+                }
+                
+                if (conventionData.custom_session_labels) {
+                    try {
+                        const customLabelsData = JSON.parse(conventionData.custom_session_labels);
+                        Object.entries(customLabelsData).forEach(([sessionKey, label]) => {
+                            this.customSessionLabels.set(sessionKey, label);
+                        });
+                    } catch (e) {
+                        console.error('Error parsing custom session labels:', e);
+                    }
+                }
+                
+                // Load all related data (papers, room names, etc.)
+                await this.loadDataFromSupabase();
+                
+                // Recalculate and regenerate the display
+                this.calculateRequirements();
+                
                 this.closeConventionListModal();
                 this.showNotification(`Convention "${conventionData.name}" loaded successfully!`, 'success');
             }
@@ -5279,6 +5371,59 @@ class ConventionRoomCalculator {
                this.paperDetails.size > 0 ||
                parseInt(document.getElementById('totalPapers').value) > 0 ||
                parseInt(document.getElementById('totalRoundTables').value) > 0;
+    }
+
+    async saveToCurrentConvention() {
+        if (!window.supabaseConfig) return;
+        
+        try {
+            // Update the current convention with session data
+            const formData = this.getFormData();
+            
+            // Serialize all the complex data structures
+            const sessionAssignmentsData = {};
+            this.roundTableAssignments.forEach((assignment, roundTableId) => {
+                sessionAssignmentsData[`roundtable_${roundTableId}`] = assignment;
+            });
+            
+            const paperAssignmentsData = {};
+            this.paperSessionAssignments.forEach((session, positionKey) => {
+                paperAssignmentsData[positionKey] = session;
+            });
+            
+            const customSessionsData = {};
+            this.customSessions.forEach((session, sessionKey) => {
+                customSessionsData[sessionKey] = session;
+            });
+            
+            const customLabelsData = {};
+            this.customSessionLabels.forEach((label, sessionKey) => {
+                customLabelsData[sessionKey] = label;
+            });
+
+            await window.supabaseConfig.updateCurrentConvention({
+                days: formData.conventionDays,
+                time_slots_per_day: formData.timeSlotsPerDay,
+                available_rooms: formData.availableRooms,
+                sessions_per_time_slot: formData.sessionsPerTimeSlot,
+                total_papers: formData.totalPapers,
+                papers_per_session: formData.papersPerSession,
+                min_papers_per_session: formData.minPapersPerSession,
+                max_papers_per_session: formData.maxPapersPerSession,
+                total_round_tables: formData.totalRoundTables,
+                round_table_duration: formData.roundTableDuration,
+                round_table_assignments: JSON.stringify(sessionAssignmentsData),
+                paper_session_assignments: JSON.stringify(paperAssignmentsData),
+                custom_sessions: JSON.stringify(customSessionsData),
+                custom_session_labels: JSON.stringify(customLabelsData),
+                updated_at: new Date().toISOString()
+            });
+            
+            // Also save related data
+            await this.saveDataToSupabase();
+        } catch (error) {
+            console.error('Error auto-saving to current convention:', error);
+        }
     }
 }
 
