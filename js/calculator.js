@@ -5031,34 +5031,36 @@ class ConventionRoomCalculator {
     saveSessionLabels() {
         if (!this.currentResults) return;
 
-        // Save paper session labels
-        if (this.currentResults.sessionDistribution && this.currentResults.sessionDistribution.sessions) {
-            this.currentResults.sessionDistribution.sessions.forEach((session) => {
-                const sessionKey = `paper_session_${session.id}`;
-                const input = document.getElementById(`sessionLabel_${sessionKey}`);
-                if (input) {
-                    const customLabel = input.value.trim();
-                    if (customLabel !== '') {
-                        this.customSessionLabels.set(sessionKey, customLabel);
-                    } else {
-                        this.customSessionLabels.delete(sessionKey);
-                    }
-                }
-            });
-        }
-        
-        // Save round table labels
-        for (let i = 1; i <= this.currentResults.roundTableSessions; i++) {
-            const sessionKey = `round_table_${i}`;
-            const input = document.getElementById(`sessionLabel_${sessionKey}`);
-            if (input) {
+        // Save paper session labels - check all possible session inputs in the modal
+        const paperContainer = document.getElementById('paperSessionLabelsContainer');
+        if (paperContainer) {
+            // Find all session label inputs in the container
+            const sessionInputs = paperContainer.querySelectorAll('input[id^="sessionLabel_paper_session_"]');
+            sessionInputs.forEach((input) => {
+                const sessionKey = input.id.replace('sessionLabel_', '');
                 const customLabel = input.value.trim();
                 if (customLabel !== '') {
                     this.customSessionLabels.set(sessionKey, customLabel);
                 } else {
                     this.customSessionLabels.delete(sessionKey);
                 }
-            }
+            });
+        }
+        
+        // Save round table labels - check all possible round table inputs in the modal
+        const roundTableContainer = document.getElementById('roundTableLabelsContainer');
+        if (roundTableContainer) {
+            // Find all round table label inputs in the container
+            const roundTableInputs = roundTableContainer.querySelectorAll('input[id^="sessionLabel_round_table_"]');
+            roundTableInputs.forEach((input) => {
+                const sessionKey = input.id.replace('sessionLabel_', '');
+                const customLabel = input.value.trim();
+                if (customLabel !== '') {
+                    this.customSessionLabels.set(sessionKey, customLabel);
+                } else {
+                    this.customSessionLabels.delete(sessionKey);
+                }
+            });
         }
 
         this.updateSessionLabelsPreview();
