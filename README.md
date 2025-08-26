@@ -47,7 +47,7 @@ A comprehensive web application for planning and organizing academic conference 
 - **Custom Room Names**: Replace default room numbering with meaningful names (e.g., "Auditorium A", "Conference Hall")
 - **Time Slot Scheduling**: Set specific times for each time slot (e.g., "9:00 AM", "10:30 AM")
 - **Custom Time Slot Labels**: Replace default labels (A, B, C) with descriptive names (e.g., "Opening Keynote", "Morning Session")
-- **Custom Session Labels**: Personalize session names beyond default numbering
+- **Custom Session Labels**: Personalize session names beyond default numbering with dynamic updates when session parameters change
 - **Per-Day Configuration**: Different numbers of time slots, rooms, and sessions per day
 - **Category Color Coding**: Visual organization with color-coded session categories
 - **Round Table Participant Management**: 
@@ -59,6 +59,10 @@ A comprehensive web application for planning and organizing academic conference 
 - **Supabase Integration**: Automatic saving and loading of all configuration data
 - **Session State Management**: Maintains round table assignments, customizations, and preferences
 - **Cross-session Continuity**: Data persists across browser sessions
+- **Dynamic Session Label Management**: Session customization modal automatically updates when session parameters change, ensuring users can customize all available sessions
+
+### Recent Fixes (August 2024)
+- **Dynamic Session Label Updates**: Fixed issue where "Manage Session Labels" modal wouldn't update when users increased sessions per time slot. The modal now recalculates available sessions based on current form parameters and dynamically generates input fields for all possible sessions.
 
 ## 🔄 Current Functional Entry URIs (Paths and Parameters)
 
