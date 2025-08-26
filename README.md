@@ -19,7 +19,7 @@ This calculator helps convention organizers determine the feasibility of their e
 
 ### Input Parameters
 - Convention duration (days)
-- Time slots per day
+- Time slots per day (standard or custom per day)
 - Available rooms at hotel
 - Total number of papers to present
 - Papers per session
@@ -33,11 +33,12 @@ This calculator helps convention organizers determine the feasibility of their e
 - **Daily Planning**: Sessions per day, rooms used per day, buffer rooms available
 
 ### Advanced Analytics
-- **Detailed Schedule Table**: Day-by-day breakdown of room usage and utilization
-- **Interactive Chart**: Visual representation of daily room utilization
+- **Detailed Schedule Table**: Day-by-day breakdown of room usage and utilization with variable time slots support
+- **Interactive Chart**: Visual representation of daily room utilization showing custom slot configurations
 - **Session Breakdown Grid**: Complete schedule with continuous alphabet time slots (A, B, C, D, E, F...)
-- **Mixed Session Distribution**: One round table per time slot with remaining slots filled by paper sessions
-- **PDF Export**: Professional schedule export with full session details including leadership
+- **Prioritized Session Distribution**: Paper sessions scheduled first, followed by round tables at the end of the convention
+- **Custom Time Slots**: Flexible per-day time slot configuration (e.g., Day 1: 1 slot, Day 2-3: 4 slots each)
+- **PDF Export**: Professional schedule export with full session details including leadership and custom time slots
 - **Optimization Suggestions**: Recommendations when configuration is not feasible
 
 ### Session Leadership Management
@@ -69,6 +70,34 @@ This calculator helps convention organizers determine the feasibility of their e
 - **Smart Defaults**: Automatically falls back to numbered rooms if no custom name is provided
 - **Export Integration**: Custom room names appear in PDF exports and all schedule displays
 
+### Custom Naming System
+- **Time Slot Labels**: Replace generic "A", "B", "C" with meaningful names like "Opening Keynote", "Morning Session", "Lunch Break"
+- **Session Names**: Customize session titles from "Session 1" to descriptive names like "Medieval Poetry Panel", "Graduate Showcase"
+- **Per-Day Customization**: Different time slot names for each day (e.g., Day 1: "Opening", "Welcome"; Day 2: "Morning", "Afternoon")
+- **Smart Fallbacks**: Automatically uses default labels when custom names aren't provided
+- **Complete Integration**: Custom names appear throughout the interface, schedule breakdown, and PDF exports
+- **Easy Management**: User-friendly modals for managing time slot and session labels
+- **Real-time Updates**: Name changes immediately reflect in all displays and calculations
+- **Flexible Assignment**: Mix custom and default names as needed for different parts of the schedule
+
+### Comprehensive Daily Configuration Management
+- **Per-Day Customization**: Configure time slots, available rooms, and sessions per time slot for each day independently
+- **Flexible Hotel Availability**: Account for different room availability per day (e.g., banquet rooms only available certain days)
+- **Variable Session Capacity**: Adjust concurrent sessions per time slot based on daily requirements and room configurations
+- **Real-time Calculations**: All calculations automatically adjust to accommodate per-day variations
+- **Intelligent Capacity Planning**: System calculates total convention capacity based on each day's individual configuration
+- **Visual Configuration Interface**: User-friendly modal with per-day inputs and real-time capacity calculations
+- **Complete Integration**: Schedule tables, charts, and PDF exports all reflect custom daily configurations
+- **Smart Distribution**: Sessions distributed optimally across days based on each day's actual capacity
+- **Consistent Time Slot Labeling**: Each day uses A, B, C, D... labeling independently (Day 1: A,B,C; Day 2: A,B,C,D etc.)
+- **Accurate Time Display**: Time slot scheduling properly accounts for variable slots per day
+- **Easy Reset**: One-click reset to standard configuration if customization is no longer needed
+- **Example Use Cases**: 
+  - **Day 1 (Opening)**: 1 time slot, 5 rooms available, 12 sessions (limited venue access for setup)
+  - **Day 2-3 (Main Conference)**: 4 time slots, 10 rooms available, 3 sessions per slot (full venue access)
+  - **Day 4 (Closing)**: 2 time slots, 8 rooms available, 2 sessions per slot (partial venue for wrap-up)
+- **Realistic Hotel Scenarios**: Handle real-world constraints where different meeting spaces are available on different days
+
 ### User Interface
 - **Responsive Design**: Works on desktop, tablet, and mobile devices
 - **Modern Styling**: Clean, professional interface with Tailwind CSS
@@ -91,9 +120,13 @@ This calculator helps convention organizers determine the feasibility of their e
 
 **Input Parameters**:
 - `conventionDays`: Number of days (default: 3)
-- `timeSlotsPerDay`: Time slots per day (default: 4)
-- `availableRooms`: Hotel rooms available (default: 10)
-- `sessionsPerTimeSlot`: Concurrent sessions per time slot (default: 3)
+- `timeSlotsPerDay`: Time slots per day - standard value (default: 4)
+- `availableRooms`: Hotel rooms available - standard value (default: 10)
+- `sessionsPerTimeSlot`: Concurrent sessions per time slot - standard value (default: 3)
+- `customDailyConfig`: Optional per-day configuration:
+  - `customTimeSlots`: Time slots per specific day (overrides standard)
+  - `customRoomsPerDay`: Available rooms per specific day (overrides standard)
+  - `customSessionsPerSlot`: Sessions per time slot per specific day (overrides standard)
 - `totalPapers`: Papers to present (default: 60)
 - `papersPerSession`: Papers per session (default: 4)
 - `papersPerRoom`: Papers per room concurrent presentations (default: 1)
@@ -114,9 +147,11 @@ This calculator helps convention organizers determine the feasibility of their e
 
 ### Key Algorithms
 - **Session Calculation**: `paperSessions = ceil(totalPapers / papersPerSession)`
-- **Room Requirements**: `minRooms = ceil(totalSessions / totalTimeSlots)`
-- **Feasibility Check**: `totalSessions <= (days × slotsPerDay × availableRooms)`
-- **Utilization Rate**: `(totalSessions / totalRoomSlots) × 100`
+- **Room Requirements**: 
+  - Standard: `minRooms = ceil(totalSessions / totalTimeSlots)`
+  - Custom Daily Config: `minRooms = max(concurrentSessionsPerDay across all days)`
+- **Feasibility Check**: `totalSessions <= totalSessionCapacity`
+- **Utilization Rate**: `(totalSessions / totalSessionCapacity) × 100`
 
 ### Files Structure
 ```
@@ -220,15 +255,17 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete step-by-step instructions.
 ## 📋 Complete Convention Planning Workflow
 
 ### Step-by-Step Process
-1. **Configure Convention**: Set days, time slots, and available rooms
-2. **Customize Room Names**: Use "Manage Rooms" to replace generic room numbers with actual venue names
-3. **Build Leadership Database**: Use "Manage Moderators" and "Manage Chairs" to create rosters of potential session leadership
-4. **Add Papers**: Use "Manage Papers" to add individual paper details
-5. **Calculate Schedule**: Generate the basic session structure
-6. **Assign Papers**: Use "Assign Papers to Sessions" for detailed assignment
-7. **Assign Leadership**: Click individual sessions to select moderators and chairs from dropdowns or enter custom ones
-8. **Review Schedule**: View assigned papers, leadership, and room assignments in the detailed breakdown
-9. **Export Results**: Generate comprehensive PDF with all assignments, leadership, and custom room names
+1. **Configure Convention**: Set basic days, time slots, and available rooms
+2. **Customize Daily Configuration** (Optional): Use "Configure" button to set per-day time slots, room availability, and session capacity
+3. **Customize Room Names**: Use "Manage Rooms" to replace generic room numbers with actual venue names
+4. **Customize Labels** (Optional): Use "Customize Labels" and "Customize Names" to replace generic time slot and session names with meaningful titles
+5. **Build Leadership Database**: Use "Manage Moderators" and "Manage Chairs" to create rosters of potential session leadership
+6. **Add Papers**: Use "Manage Papers" to add individual paper details
+7. **Calculate Schedule**: Generate the basic session structure based on daily configurations
+8. **Assign Papers**: Use "Assign Papers to Sessions" for detailed assignment
+9. **Assign Leadership**: Click individual sessions to select moderators and chairs from dropdowns or enter custom ones
+10. **Review Schedule**: View assigned papers, leadership, and room assignments in the detailed breakdown with custom names
+11. **Export Results**: Generate comprehensive PDF with all assignments, leadership, custom room names, custom time slot labels, and session names
 
 ### Assignment Features
 - **Drag-and-Drop Interface**: Intuitive paper assignment to sessions
@@ -259,10 +296,12 @@ The calculator now includes comprehensive PDF export functionality:
 
 ### PDF Contents
 - **Convention Overview**: Days, time slots, room count, utilization
-- **Complete Schedule**: Day-by-day breakdown with continuous alphabet time slots
-- **Session Details**: Paper sessions with categories, paper counts, and room assignments
+- **Complete Schedule**: Day-by-day breakdown with custom time slot labels and session names
+- **Session Details**: Paper sessions with custom names, categories, paper counts, and room assignments
 - **Leadership Information**: Moderators and chairs with institutional affiliations
 - **Custom Room Names**: Actual venue names instead of generic room numbers
+- **Custom Time Slots**: Meaningful time slot names like "Opening Keynote" instead of "Time Slot A"
+- **Custom Session Names**: Descriptive session titles like "Medieval Poetry Panel" instead of "Paper Session 1"
 - **Organized Layout**: Clear hierarchy with proper spacing and line breaks
 - **Professional Formatting**: Multi-page layout with automatic page breaks
 
