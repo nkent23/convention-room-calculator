@@ -980,7 +980,8 @@ class ConventionRoomCalculator {
                 'purple',
                 'users',
                 roundTableTitle,
-                true // isDraggable
+                true, // isDraggable
+                false // isModifiable - unassigned tables don't need edit/remove buttons
             );
         });
         
@@ -2269,12 +2270,13 @@ class ConventionRoomCalculator {
             }
         }
         
-        const clickAttributes = isDraggable && displayData.type === 'round table' ? 
-            `data-round-table-id="${displayData.sessionNumber}" class="round-table-clickable"` : '';
+        const isRoundTableClickable = isDraggable && displayData.type === 'round table';
+        const roundTableClasses = isRoundTableClickable ? ' round-table-clickable' : '';
+        const dataAttributes = isRoundTableClickable ? `data-round-table-id="${displayData.sessionNumber}"` : '';
         
         return `
-            <div class="bg-${finalColor}-50 border border-${finalColor}-200 rounded-md p-3 session-editable ${isDraggable ? 'cursor-pointer' : 'cursor-pointer'}" 
-                 ${clickAttributes}
+            <div class="bg-${finalColor}-50 border border-${finalColor}-200 rounded-md p-3 session-editable ${isDraggable ? 'cursor-pointer' : 'cursor-pointer'}${roundTableClasses}" 
+                 ${dataAttributes}
                  ${!isDraggable ? `onclick="calculator.openEditModal('${sessionKey}', ${JSON.stringify(sessionData).replace(/"/g, '&quot;')})"` : ''}>
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
