@@ -246,12 +246,15 @@ A comprehensive web application for planning and organizing academic conference 
 - **Modern Web Browser**: Chrome, Firefox, Safari, or Edge (ES6+ support required)
 - **Internet Connection**: Required for Tailwind CSS CDN and Supabase integration
 - **JavaScript Enabled**: Full functionality requires JavaScript
+- **Database Setup**: Supabase database with required schema (see MIGRATION_NOTES.md for setup instructions)
 
 ## 📝 Notes
 
-- **Reserved Slots**: The system automatically reserves at least one slot per time slot for round table placement when round tables exist and multiple sessions per slot are configured
-- **Data Persistence**: All configuration data is automatically saved to Supabase when available
+- **Enhanced Data Persistence**: Complete convention state including session assignments, customizations, and position-specific data is automatically saved
+- **Auto-Save**: Changes to sessions, assignments, and customizations are automatically saved as you work
+- **Convention Isolation**: Each saved convention maintains its own complete state independently
 - **Mobile Responsive**: Interface adapts to different screen sizes for tablet and mobile use
 - **Real-time Validation**: Form inputs are validated in real-time with immediate feedback
+- **Database Requirements**: See MIGRATION_NOTES.md for required database schema updates
 
 This project provides a comprehensive solution for academic conference planning with particular strength in manual session scheduling and round table management.
