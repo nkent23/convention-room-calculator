@@ -18,6 +18,8 @@ class ConventionRoomCalculator {
         this.customTimeSlots = new Map(); // Store custom time slots per day (day -> number of slots)
         this.customRoomsPerDay = new Map(); // Store custom available rooms per day (day -> number of rooms)
         this.customSessionsPerSlot = new Map(); // Store custom sessions per time slot per day (day -> sessions per slot)
+        this.customTimeSlotLabels = new Map(); // Store custom time slot labels (day -> array of slot labels)
+        this.customSessionLabels = new Map(); // Store custom session labels (sessionKey -> custom label)
         
         this.initializeEventListeners();
         this.initializeModalEventListeners();
@@ -29,6 +31,8 @@ class ConventionRoomCalculator {
         this.initializeModeratorManagementEventListeners();
         this.initializeChairManagementEventListeners();
         this.initializeCustomTimeSlotsEventListeners();
+        this.initializeTimeSlotLabelsEventListeners();
+        this.initializeSessionLabelsEventListeners();
         this.loadDefaultCategories();
         this.loadDataFromSupabase(); // Load saved data
         this.calculateRequirements(); // Initial calculation with default values
@@ -83,6 +87,16 @@ class ConventionRoomCalculator {
         // Assign papers to sessions
         document.getElementById('assignPapersBtn').addEventListener('click', () => {
             this.openPaperAssignmentModal();
+        });
+
+        // Manage time slot labels
+        document.getElementById('manageTimeSlotLabelsBtn').addEventListener('click', () => {
+            this.openTimeSlotLabelsModal();
+        });
+
+        // Manage session labels
+        document.getElementById('manageSessionLabelsBtn').addEventListener('click', () => {
+            this.openSessionLabelsModal();
         });
     }
 
@@ -703,7 +717,8 @@ class ConventionRoomCalculator {
                         
                         if (shouldAddRoundTable && roundTableCount < results.roundTableSessions) {
                             sessionType = 'Round Table';
-                            sessionTitle = `Round Table ${roundTableCount + 1}`;
+                            const roundTableId = roundTableCount + 1;
+                            sessionTitle = this.getSessionLabel('round_table', roundTableId);
                             sessionColor = 'purple';
                             sessionIcon = 'users';
                             roundTableCount++;
@@ -711,7 +726,20 @@ class ConventionRoomCalculator {
                         } else if (paperSessionCount < results.paperSessions) {
                             sessionType = 'Paper';
                             const sessionInfo = results.sessionDistribution.sessions[paperSessionCount];
-                            sessionTitle = sessionInfo ? sessionInfo.title : `Paper Session ${paperSessionCount + 1}`;
+                            const paperSessionId = paperSessionCount + 1;
+                            
+                            // Get custom session name or fall back to default
+                            const customSessionName = this.getSessionLabel('paper_session', sessionInfo ? sessionInfo.id : paperSessionId);
+                            sessionTitle = customSessionName;
+                            
+                            // If using custom name, include paper count
+                            if (customSessionName !== `Paper Session ${paperSessionId}`) {
+                                const paperCount = sessionInfo ? sessionInfo.paperCount : results.papersPerSession;
+                                sessionTitle += ` (${paperCount} papers)`;
+                            } else {
+                                sessionTitle = sessionInfo ? sessionInfo.title : `Paper Session ${paperSessionId}`;
+                            }
+                            
                             sessionColor = 'green';
                             sessionIcon = 'file-alt';
                             
@@ -725,7 +753,8 @@ class ConventionRoomCalculator {
                         } else if (roundTableCount < results.roundTableSessions && !roundTableAddedInSlot) {
                             // Fallback: add remaining round tables if no papers left
                             sessionType = 'Round Table';
-                            sessionTitle = `Round Table ${roundTableCount + 1}`;
+                            const roundTableId = roundTableCount + 1;
+                            sessionTitle = this.getSessionLabel('round_table', roundTableId);
                             sessionColor = 'purple';
                             sessionIcon = 'users';
                             roundTableCount++;
@@ -948,7 +977,9 @@ class ConventionRoomCalculator {
                         const sessionKey = this.getSessionKey(day, slotLabel, s);
                         const customSession = this.customSessions.get(sessionKey);
                         const roomInfo = customSession && customSession.preferredRoom ? customSession.preferredRoom : this.getRoomName(Math.floor(Math.random() * this.currentResults.availableRooms) + 1);
-                        sessionText = `  • Round Table ${roundTableCount + 1}`;
+                        const roundTableId = roundTableCount + 1;
+                        const roundTableTitle = this.getSessionLabel('round_table', roundTableId);
+                        sessionText = `  • ${roundTableTitle}`;
                         sessionText += `\n    Room: ${roomInfo}`;
                         
                         if (customSession && customSession.notes) {
@@ -989,9 +1020,17 @@ class ConventionRoomCalculator {
                             roomInfo = customSession.preferredRoom || roomInfo;
                         }
                         
-                        // Build session title with category
+                        // Build session title with category and custom name
+                        const paperSessionId = paperSessionCount + 1;
+                        const paperSessionTitle = this.getSessionLabel('paper_session', paperSessionId);
                         const categoryIndicator = category ? ` - ${category.toUpperCase()}` : '';
-                        sessionText = `  • Paper Session ${paperSessionCount + 1} (${papersInSession} papers)${categoryIndicator}`;
+                        
+                        // Use custom name if available, otherwise default format
+                        if (paperSessionTitle !== `Paper Session ${paperSessionId}`) {
+                            sessionText = `  • ${paperSessionTitle} (${papersInSession} papers)${categoryIndicator}`;
+                        } else {
+                            sessionText = `  • Paper Session ${paperSessionId} (${papersInSession} papers)${categoryIndicator}`;
+                        }
                         sessionText += `\n    Room: ${roomInfo}`;
                         
                         if (customSession && customSession.notes) {
@@ -1028,7 +1067,9 @@ class ConventionRoomCalculator {
                         const sessionKey = this.getSessionKey(day, slotLabel, s);
                         const customSession = this.customSessions.get(sessionKey);
                         const roomInfo = customSession && customSession.preferredRoom ? customSession.preferredRoom : this.getRoomName(Math.floor(Math.random() * this.currentResults.availableRooms) + 1);
-                        sessionText = `  • Round Table ${roundTableCount + 1}`;
+                        const roundTableId = roundTableCount + 1;
+                        const roundTableTitle = this.getSessionLabel('round_table', roundTableId);
+                        sessionText = `  • ${roundTableTitle}`;
                         sessionText += `\n    Room: ${roomInfo}`;
                         
                         if (customSession && customSession.notes) {
@@ -1574,14 +1615,21 @@ class ConventionRoomCalculator {
     }
 
     formatTimeSlot(day, slotLabel) {
+        // Get custom label if available
+        const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+        const slotIndex = timeSlotLabels.indexOf(slotLabel);
+        const customLabel = this.getTimeSlotLabel(day, slotIndex >= 0 ? slotIndex : 0);
+        
         // Create consistent time slot ID format
         const timeSlotId = `day-${day}-slot-${slotLabel}`;
         const scheduledTime = this.timeSlotSchedule.get(timeSlotId);
         
+        const displayLabel = customLabel !== slotLabel ? customLabel : `Time Slot ${slotLabel}`;
+        
         if (scheduledTime) {
-            return `Time Slot ${slotLabel} (${this.formatTime(scheduledTime)})`;
+            return `${displayLabel} (${this.formatTime(scheduledTime)})`;
         } else {
-            return `Time Slot ${slotLabel}`;
+            return displayLabel;
         }
     }
 
@@ -3737,6 +3785,345 @@ class ConventionRoomCalculator {
         </div>`;
         
         breakdownDiv.innerHTML = breakdownHTML;
+    }
+
+    // Time Slot Labels Management Functions
+    initializeTimeSlotLabelsEventListeners() {
+        document.getElementById('closeTimeSlotLabelsModal').addEventListener('click', () => {
+            this.closeTimeSlotLabelsModal();
+        });
+
+        document.getElementById('cancelTimeSlotLabels').addEventListener('click', () => {
+            this.closeTimeSlotLabelsModal();
+        });
+
+        document.getElementById('saveTimeSlotLabels').addEventListener('click', () => {
+            this.saveTimeSlotLabels();
+        });
+
+        document.getElementById('resetTimeSlotLabels').addEventListener('click', () => {
+            this.resetTimeSlotLabels();
+        });
+
+        // Close modal when clicking overlay
+        document.getElementById('timeSlotLabelsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'timeSlotLabelsModal') {
+                this.closeTimeSlotLabelsModal();
+            }
+        });
+    }
+
+    openTimeSlotLabelsModal() {
+        this.generateTimeSlotLabelsInputs();
+        document.getElementById('timeSlotLabelsModal').classList.remove('hidden');
+        document.body.classList.add('modal-open');
+    }
+
+    closeTimeSlotLabelsModal() {
+        document.getElementById('timeSlotLabelsModal').classList.add('hidden');
+        document.body.classList.remove('modal-open');
+    }
+
+    generateTimeSlotLabelsInputs() {
+        const data = this.getFormData();
+        const container = document.getElementById('timeSlotLabelsContainer');
+        const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+        
+        let inputsHTML = '';
+        
+        for (let day = 1; day <= data.conventionDays; day++) {
+            const dayIndex = day - 1;
+            const timeSlotsThisDay = data.timeSlotsPerDayArray ? data.timeSlotsPerDayArray[dayIndex] : data.timeSlotsPerDay;
+            const dayLabels = this.customTimeSlotLabels.get(day) || [];
+            
+            inputsHTML += `
+                <div class="border border-cyan-200 rounded-lg p-4">
+                    <h4 class="font-medium text-cyan-800 mb-3 flex items-center">
+                        <i class="fas fa-calendar-day text-cyan-600 mr-2"></i>
+                        Day ${day} (${timeSlotsThisDay} time slots)
+                    </h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            `;
+            
+            for (let slot = 0; slot < timeSlotsThisDay; slot++) {
+                const defaultLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
+                const customLabel = dayLabels[slot] || '';
+                
+                inputsHTML += `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-16 text-sm font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded text-center">
+                            ${defaultLabel}
+                        </div>
+                        <input type="text" 
+                               id="timeSlotLabel_${day}_${slot}" 
+                               placeholder="e.g., Opening Keynote, Morning Session"
+                               value="${customLabel}"
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm">
+                    </div>
+                `;
+            }
+            
+            inputsHTML += `
+                    </div>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = inputsHTML;
+    }
+
+    saveTimeSlotLabels() {
+        const data = this.getFormData();
+        
+        // Clear existing labels
+        this.customTimeSlotLabels.clear();
+        
+        // Save new labels
+        for (let day = 1; day <= data.conventionDays; day++) {
+            const dayIndex = day - 1;
+            const timeSlotsThisDay = data.timeSlotsPerDayArray ? data.timeSlotsPerDayArray[dayIndex] : data.timeSlotsPerDay;
+            const dayLabels = [];
+            
+            for (let slot = 0; slot < timeSlotsThisDay; slot++) {
+                const input = document.getElementById(`timeSlotLabel_${day}_${slot}`);
+                const customLabel = input.value.trim();
+                dayLabels.push(customLabel);
+            }
+            
+            // Only save if there are custom labels
+            if (dayLabels.some(label => label !== '')) {
+                this.customTimeSlotLabels.set(day, dayLabels);
+            }
+        }
+        
+        this.updateTimeSlotLabelsPreview();
+        this.closeTimeSlotLabelsModal();
+
+        // Refresh displays if schedule exists
+        if (this.currentResults) {
+            this.generateDetailedBreakdown(this.currentResults);
+        }
+    }
+
+    resetTimeSlotLabels() {
+        if (confirm('Reset all time slot labels to default (A, B, C, etc.)?')) {
+            this.customTimeSlotLabels.clear();
+            this.generateTimeSlotLabelsInputs();
+            this.updateTimeSlotLabelsPreview();
+        }
+    }
+
+    updateTimeSlotLabelsPreview() {
+        const summary = document.getElementById('timeSlotLabelsSummary');
+        const customCount = this.customTimeSlotLabels.size;
+        
+        if (customCount === 0) {
+            summary.textContent = 'Using default slot labels (A, B, C, etc.)';
+        } else {
+            let totalCustomLabels = 0;
+            this.customTimeSlotLabels.forEach(dayLabels => {
+                totalCustomLabels += dayLabels.filter(label => label !== '').length;
+            });
+            
+            summary.textContent = `${totalCustomLabels} custom time slot label${totalCustomLabels > 1 ? 's' : ''} defined across ${customCount} day${customCount > 1 ? 's' : ''}`;
+        }
+    }
+
+    getTimeSlotLabel(day, slotIndex) {
+        const dayLabels = this.customTimeSlotLabels.get(day);
+        if (dayLabels && dayLabels[slotIndex] && dayLabels[slotIndex].trim() !== '') {
+            return dayLabels[slotIndex];
+        }
+        
+        // Fall back to default labels
+        const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+        return timeSlotLabels[slotIndex] || `Slot ${slotIndex + 1}`;
+    }
+
+    // Session Labels Management Functions
+    initializeSessionLabelsEventListeners() {
+        document.getElementById('closeSessionLabelsModal').addEventListener('click', () => {
+            this.closeSessionLabelsModal();
+        });
+
+        document.getElementById('cancelSessionLabels').addEventListener('click', () => {
+            this.closeSessionLabelsModal();
+        });
+
+        document.getElementById('saveSessionLabels').addEventListener('click', () => {
+            this.saveSessionLabels();
+        });
+
+        document.getElementById('resetSessionLabels').addEventListener('click', () => {
+            this.resetSessionLabels();
+        });
+
+        // Close modal when clicking overlay
+        document.getElementById('sessionLabelsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'sessionLabelsModal') {
+                this.closeSessionLabelsModal();
+            }
+        });
+    }
+
+    openSessionLabelsModal() {
+        if (!this.currentResults) {
+            alert('Please calculate the schedule first to see available sessions.');
+            return;
+        }
+        
+        this.generateSessionLabelsInputs();
+        document.getElementById('sessionLabelsModal').classList.remove('hidden');
+        document.body.classList.add('modal-open');
+    }
+
+    closeSessionLabelsModal() {
+        document.getElementById('sessionLabelsModal').classList.add('hidden');
+        document.body.classList.remove('modal-open');
+    }
+
+    generateSessionLabelsInputs() {
+        if (!this.currentResults) return;
+
+        const paperContainer = document.getElementById('paperSessionLabelsContainer');
+        const roundTableContainer = document.getElementById('roundTableLabelsContainer');
+        
+        // Generate paper session inputs
+        let paperHTML = '';
+        if (this.currentResults.sessionDistribution && this.currentResults.sessionDistribution.sessions) {
+            this.currentResults.sessionDistribution.sessions.forEach((session, index) => {
+                const sessionKey = `paper_session_${session.id}`;
+                const customLabel = this.customSessionLabels.get(sessionKey) || '';
+                
+                paperHTML += `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-20 text-sm font-medium text-gray-700 bg-green-100 px-2 py-1 rounded text-center">
+                            Session ${session.id}
+                        </div>
+                        <input type="text" 
+                               id="sessionLabel_${sessionKey}" 
+                               placeholder="e.g., Medieval Poetry Panel, Contemporary Voices"
+                               value="${customLabel}"
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm">
+                        <div class="text-xs text-gray-500 w-16">
+                            ${session.paperCount} papers
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        if (paperHTML === '') {
+            paperHTML = '<div class="text-sm text-gray-500 italic">No paper sessions to customize</div>';
+        }
+        
+        paperContainer.innerHTML = paperHTML;
+        
+        // Generate round table session inputs
+        let roundTableHTML = '';
+        if (this.currentResults.roundTableSessions > 0) {
+            for (let i = 1; i <= this.currentResults.roundTableSessions; i++) {
+                const sessionKey = `round_table_${i}`;
+                const customLabel = this.customSessionLabels.get(sessionKey) || '';
+                
+                roundTableHTML += `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-20 text-sm font-medium text-gray-700 bg-purple-100 px-2 py-1 rounded text-center">
+                            Table ${i}
+                        </div>
+                        <input type="text" 
+                               id="sessionLabel_${sessionKey}" 
+                               placeholder="e.g., Graduate Showcase, Faculty Forum"
+                               value="${customLabel}"
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm">
+                    </div>
+                `;
+            }
+        }
+        
+        if (roundTableHTML === '') {
+            roundTableHTML = '<div class="text-sm text-gray-500 italic">No round table sessions to customize</div>';
+        }
+        
+        roundTableContainer.innerHTML = roundTableHTML;
+    }
+
+    saveSessionLabels() {
+        if (!this.currentResults) return;
+
+        // Save paper session labels
+        if (this.currentResults.sessionDistribution && this.currentResults.sessionDistribution.sessions) {
+            this.currentResults.sessionDistribution.sessions.forEach((session) => {
+                const sessionKey = `paper_session_${session.id}`;
+                const input = document.getElementById(`sessionLabel_${sessionKey}`);
+                if (input) {
+                    const customLabel = input.value.trim();
+                    if (customLabel !== '') {
+                        this.customSessionLabels.set(sessionKey, customLabel);
+                    } else {
+                        this.customSessionLabels.delete(sessionKey);
+                    }
+                }
+            });
+        }
+        
+        // Save round table labels
+        for (let i = 1; i <= this.currentResults.roundTableSessions; i++) {
+            const sessionKey = `round_table_${i}`;
+            const input = document.getElementById(`sessionLabel_${sessionKey}`);
+            if (input) {
+                const customLabel = input.value.trim();
+                if (customLabel !== '') {
+                    this.customSessionLabels.set(sessionKey, customLabel);
+                } else {
+                    this.customSessionLabels.delete(sessionKey);
+                }
+            }
+        }
+
+        this.updateSessionLabelsPreview();
+        this.closeSessionLabelsModal();
+
+        // Refresh displays
+        this.generateDetailedBreakdown(this.currentResults);
+    }
+
+    resetSessionLabels() {
+        if (confirm('Reset all session names to default numbering?')) {
+            this.customSessionLabels.clear();
+            this.generateSessionLabelsInputs();
+            this.updateSessionLabelsPreview();
+        }
+    }
+
+    updateSessionLabelsPreview() {
+        const summary = document.getElementById('sessionLabelsSummary');
+        const customCount = this.customSessionLabels.size;
+        
+        if (customCount === 0) {
+            summary.textContent = 'Using default session numbering (Session 1, Session 2, etc.)';
+        } else {
+            summary.textContent = `${customCount} custom session name${customCount > 1 ? 's' : ''} defined`;
+        }
+    }
+
+    getSessionLabel(sessionType, sessionId) {
+        const sessionKey = `${sessionType}_${sessionId}`;
+        const customLabel = this.customSessionLabels.get(sessionKey);
+        
+        if (customLabel && customLabel.trim() !== '') {
+            return customLabel;
+        }
+        
+        // Fall back to default labels
+        if (sessionType === 'paper_session') {
+            return `Paper Session ${sessionId}`;
+        } else if (sessionType === 'round_table') {
+            return `Round Table ${sessionId}`;
+        }
+        
+        return `Session ${sessionId}`;
     }
 }
 
