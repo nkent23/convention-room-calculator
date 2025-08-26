@@ -681,14 +681,6 @@ class ConventionRoomCalculator {
                     const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
                     const timeSlotKey = `day${day}_slot${slot}`;
                     
-                    // Calculate how many paper sessions to place in this slot
-                    // Reserve at least 1 slot for round tables if there are any round tables and more than 1 session per slot
-                    const reservedSlotsForRoundTables = (results.roundTableSessions > 0 && sessionsPerSlotThisDay > 1) ? 1 : 0;
-                    const maxPaperSessionsInSlot = sessionsPerSlotThisDay - reservedSlotsForRoundTables;
-                    
-                    const paperSessionsNeeded = Math.min(maxPaperSessionsInSlot, remainingPaperSessions - (slot * maxPaperSessionsInSlot));
-                    const actualPaperSessions = Math.max(0, paperSessionsNeeded);
-                    
                     breakdownHTML += `
                         <div class="border border-gray-200 rounded-lg p-4 time-slot-container" 
                              data-day="${day}" data-slot="${slot}" data-time-slot-key="${timeSlotKey}">
@@ -698,76 +690,104 @@ class ConventionRoomCalculator {
                                     ${this.formatTimeSlot(day, slotLabel)}
                                 </h5>
                                 <span class="text-sm text-gray-500">
-                                    ${actualPaperSessions > 0 ? `${actualPaperSessions} paper session${actualPaperSessions > 1 ? 's' : ''}` : 'Available for scheduling'}
+                                    ${sessionsPerSlotThisDay} session position${sessionsPerSlotThisDay > 1 ? 's' : ''} available
                                 </span>
                             </div>
                             <div class="grid gap-2 session-drop-zone" data-max-sessions="${sessionsPerSlotThisDay}">
                     `;
                     
-                    // Generate paper sessions for this time slot
-                    for (let s = 0; s < actualPaperSessions && paperSessionCount < results.paperSessions; s++) {
-                        const sessionInfo = results.sessionDistribution.sessions[paperSessionCount];
-                        const paperSessionId = paperSessionCount + 1;
+                    // Generate individual session positions within this time slot
+                    for (let position = 0; position < sessionsPerSlotThisDay; position++) {
+                        const positionKey = `day${day}_slot${slot}_pos${position}`;
                         
-                        // Get custom session name or fall back to default
-                        const customSessionName = this.getSessionLabel('paper_session', sessionInfo ? sessionInfo.id : paperSessionId);
-                        let sessionTitle = customSessionName;
+                        // Check if this position has an assigned round table
+                        const assignedRoundTable = this.getAssignedRoundTableForPosition(day, slot, position);
                         
-                        // If using custom name, include paper count
-                        if (customSessionName !== `Paper Session ${paperSessionId}`) {
-                            const paperCount = sessionInfo ? sessionInfo.paperCount : results.papersPerSession;
-                            sessionTitle += ` (${paperCount} papers)`;
+                        // Check if this position should have a paper session
+                        const shouldHavePaper = !assignedRoundTable && this.shouldAssignPaperToPosition(day, slot, position, paperSessionCount, results.paperSessions);
+                        
+                        if (assignedRoundTable) {
+                            // Render assigned round table
+                            const roundTableTitle = this.getSessionLabel('round_table', assignedRoundTable);
+                            const sessionData = {
+                                day: day,
+                                timeSlot: slot,
+                                position: position,
+                                type: 'round table',
+                                sessionNumber: assignedRoundTable
+                            };
+                            
+                            const sessionKey = `roundtable_${assignedRoundTable}`;
+                            
+                            breakdownHTML += this.generateEditableSessionCard(
+                                sessionData,
+                                sessionKey,
+                                'purple',
+                                'users',
+                                roundTableTitle,
+                                true // isDraggable
+                            );
+                        } else if (shouldHavePaper) {
+                            // Render paper session
+                            const sessionInfo = results.sessionDistribution.sessions[paperSessionCount];
+                            const paperSessionId = paperSessionCount + 1;
+                            
+                            // Get custom session name or fall back to default
+                            const customSessionName = this.getSessionLabel('paper_session', sessionInfo ? sessionInfo.id : paperSessionId);
+                            let sessionTitle = customSessionName;
+                            
+                            // If using custom name, include paper count
+                            if (customSessionName !== `Paper Session ${paperSessionId}`) {
+                                const paperCount = sessionInfo ? sessionInfo.paperCount : results.papersPerSession;
+                                sessionTitle += ` (${paperCount} papers)`;
+                            } else {
+                                sessionTitle = sessionInfo ? sessionInfo.title : `Paper Session ${paperSessionId}`;
+                            }
+                            
+                            let sessionColor = 'green';
+                            
+                            // Add category indicator and color
+                            if (sessionInfo && sessionInfo.category) {
+                                const categoryColor = this.getCategoryColor(sessionInfo.category);
+                                sessionColor = categoryColor || 'green';
+                            }
+                            
+                            // Create session data for editing
+                            const sessionData = {
+                                day: day,
+                                timeSlot: slotLabel,
+                                position: position,
+                                type: 'paper',
+                                sessionNumber: paperSessionId,
+                                paperCount: sessionInfo ? sessionInfo.paperCount : results.papersPerSession,
+                                category: sessionInfo ? sessionInfo.category : null
+                            };
+                            
+                            const sessionKey = this.getSessionKey(day, slotLabel, position);
+                            
+                            breakdownHTML += this.generateEditableSessionCard(
+                                sessionData,
+                                sessionKey,
+                                sessionColor,
+                                'file-alt',
+                                sessionTitle
+                            );
+                            
+                            paperSessionCount++;
                         } else {
-                            sessionTitle = sessionInfo ? sessionInfo.title : `Paper Session ${paperSessionId}`;
+                            // Render empty position slot
+                            breakdownHTML += `
+                                <div class="session-position-slot border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer"
+                                     data-day="${day}" data-slot="${slot}" data-position="${position}"
+                                     onclick="calculator.openPositionAssignmentModal(${day}, ${slot}, ${position})">
+                                    <div class="text-gray-400 mb-2">
+                                        <i class="fas fa-plus-circle text-2xl"></i>
+                                    </div>
+                                    <p class="text-sm text-gray-500 font-medium">Position ${position + 1}</p>
+                                    <p class="text-xs text-gray-400 mt-1">Click to assign session</p>
+                                </div>
+                            `;
                         }
-                        
-                        let sessionColor = 'green';
-                        
-                        // Add category indicator and color
-                        if (sessionInfo && sessionInfo.category) {
-                            const categoryColor = this.getCategoryColor(sessionInfo.category);
-                            sessionColor = categoryColor || 'green';
-                        }
-                        
-                        // Create session data for editing
-                        const sessionData = {
-                            day: day,
-                            timeSlot: slotLabel,
-                            type: 'paper',
-                            sessionNumber: paperSessionId,
-                            paperCount: sessionInfo ? sessionInfo.paperCount : results.papersPerSession,
-                            category: sessionInfo ? sessionInfo.category : null
-                        };
-                        
-                        const sessionKey = this.getSessionKey(day, slotLabel, s);
-                        
-                        breakdownHTML += this.generateEditableSessionCard(
-                            sessionData,
-                            sessionKey,
-                            sessionColor,
-                            'file-alt',
-                            sessionTitle
-                        );
-                        
-                        paperSessionCount++;
-                    }
-                    
-                    // Add any assigned round tables to this slot
-                    breakdownHTML += this.generateAssignedRoundTables(day, slot);
-                    
-                    // Add drop zone if there's still space
-                    const assignedRoundTables = this.getAssignedRoundTablesForSlot(day, slot);
-                    const totalSessionsInSlot = actualPaperSessions + assignedRoundTables.length;
-                    
-                    if (totalSessionsInSlot < sessionsPerSlotThisDay) {
-                        const availableSlots = sessionsPerSlotThisDay - totalSessionsInSlot;
-                        breakdownHTML += `
-                            <div class="drop-zone-placeholder text-center py-3 border-2 border-dashed border-purple-300 rounded-md text-purple-600 text-sm cursor-pointer hover:bg-purple-50 transition-colors" 
-                                 onclick="calculator.openTimeSlotAssignmentModal(${day}, ${slot})">
-                                <i class="fas fa-plus-circle text-lg mb-1"></i>
-                                <p>Click to add round table (${availableSlots} slot${availableSlots > 1 ? 's' : ''} available)</p>
-                            </div>
-                        `;
                     }
                     
                     breakdownHTML += `
@@ -866,6 +886,58 @@ class ConventionRoomCalculator {
             }
         });
         return assigned;
+    }
+
+    getAssignedRoundTableForPosition(day, slot, position) {
+        // Find round table assigned to specific position
+        for (let [roundTableId, assignment] of this.roundTableAssignments) {
+            if (assignment.day === day && assignment.slotIndex === slot && assignment.position === position) {
+                return roundTableId;
+            }
+        }
+        return null;
+    }
+
+    findNextAvailablePosition(day, slot, maxSessions) {
+        // Find the next available position in this time slot
+        for (let position = 0; position < maxSessions; position++) {
+            if (!this.getAssignedRoundTableForPosition(day, slot, position)) {
+                return position;
+            }
+        }
+        return 0; // Fallback to first position
+    }
+
+    shouldAssignPaperToPosition(day, slot, position, paperSessionCount, totalPaperSessions) {
+        // Only assign paper if we still have papers left and this position isn't occupied by round table
+        if (paperSessionCount >= totalPaperSessions) {
+            return false;
+        }
+        
+        // Calculate how many paper sessions should be before this position
+        let paperSessionsBeforeThisPosition = 0;
+        
+        // Count paper sessions in previous days/slots/positions
+        for (let d = 1; d <= day; d++) {
+            const dayIndex = d - 1;
+            const timeSlotsThisDay = this.currentResults?.timeSlotsPerDayArray ? this.currentResults.timeSlotsPerDayArray[dayIndex] : this.currentResults?.timeSlotsPerDay || 4;
+            const sessionsPerSlotThisDay = this.currentResults?.sessionsPerSlotPerDayArray ? this.currentResults.sessionsPerSlotPerDayArray[dayIndex] : this.currentResults?.sessionsPerTimeSlot || 3;
+            
+            const maxSlot = (d === day) ? slot : timeSlotsThisDay;
+            
+            for (let s = 0; s < maxSlot; s++) {
+                const maxPosition = (d === day && s === slot) ? position : sessionsPerSlotThisDay;
+                
+                for (let p = 0; p < maxPosition; p++) {
+                    // If no round table is assigned to this position, count it as a paper session spot
+                    if (!this.getAssignedRoundTableForPosition(d, s, p)) {
+                        paperSessionsBeforeThisPosition++;
+                    }
+                }
+            }
+        }
+        
+        return paperSessionsBeforeThisPosition === paperSessionCount;
     }
 
     generateUnassignedRoundTablesSection(results) {
@@ -1065,10 +1137,12 @@ class ConventionRoomCalculator {
         // Remove from previous assignment
         this.roundTableAssignments.delete(roundTableId);
         
-        // Add to new assignment
+        // Add to new assignment (find next available position)
+        const nextPosition = this.findNextAvailablePosition(day, slot, sessionsPerSlotThisDay);
         this.roundTableAssignments.set(roundTableId, {
             day: day,
-            slotIndex: slot
+            slotIndex: slot,
+            position: nextPosition
         });
 
         // Close modal and refresh display
@@ -1097,6 +1171,38 @@ class ConventionRoomCalculator {
         if (modal) {
             modal.remove();
         }
+    }
+
+    assignRoundTableToPosition(roundTableId, day, slot, position) {
+        // Remove from previous assignment if exists
+        this.roundTableAssignments.delete(roundTableId);
+        
+        // Add to new position-specific assignment
+        this.roundTableAssignments.set(roundTableId, {
+            day: day,
+            slotIndex: slot,
+            position: position
+        });
+
+        // Close modal and refresh display
+        this.closeRoundTableSelectionModal();
+        this.generateDetailedBreakdown(this.currentResults);
+        
+        // Show success message
+        const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+        const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
+        this.showNotification(`Round Table ${roundTableId} assigned to Day ${day}, ${slotLabel}, Position ${position + 1}`, 'success');
+    }
+
+    assignPaperSessionToPosition(day, slot, position) {
+        // For now, just refresh the display - the paper session will be auto-generated
+        // This is a placeholder for future paper session position assignment logic
+        this.closePositionAssignmentModal();
+        this.generateDetailedBreakdown(this.currentResults);
+        
+        const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+        const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
+        this.showNotification(`Paper session will be assigned to Day ${day}, ${slotLabel}, Position ${position + 1}`, 'info');
     }
 
     openTimeSlotAssignmentModal(day, slot) {
@@ -1179,6 +1285,160 @@ class ConventionRoomCalculator {
 
     closeTimeSlotAssignmentModal() {
         const modal = document.getElementById('timeSlotAssignmentModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    openPositionAssignmentModal(day, slot, position) {
+        // Create modal content for position-specific assignment
+        let modalContent = `
+            <div class="fixed inset-0 z-50 modal-overlay" id="positionAssignmentModal" style="background-color: rgba(0,0,0,0.5);">
+                <div class="flex items-center justify-center min-h-screen px-4">
+                    <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-800">
+                                <i class="fas fa-plus-circle text-blue-600 mr-2"></i>
+                                Assign Session
+                            </h3>
+                            <p class="text-sm text-gray-600 mt-1">Choose what to assign to Day ${day}, ${this.formatTimeSlot(day, slot)}, Position ${position + 1}</p>
+                        </div>
+                        <div class="px-6 py-4">
+                            <div class="space-y-3">
+        `;
+        
+        // Option for Round Table
+        const availableRoundTables = [];
+        for (let i = 1; i <= (this.currentResults?.roundTableSessions || 0); i++) {
+            if (!this.roundTableAssignments.has(i)) {
+                availableRoundTables.push(i);
+            }
+        }
+        
+        if (availableRoundTables.length > 0) {
+            modalContent += `
+                <button class="w-full text-left p-4 border-2 border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                        onclick="calculator.showRoundTableOptions(${day}, ${slot}, ${position});">
+                    <div class="flex items-center">
+                        <i class="fas fa-users text-purple-600 mr-3 text-xl"></i>
+                        <div>
+                            <div class="font-medium text-gray-800">Round Table</div>
+                            <div class="text-sm text-gray-500">${availableRoundTables.length} available</div>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-400 ml-auto"></i>
+                    </div>
+                </button>
+            `;
+        }
+        
+        // Option for Paper Session
+        modalContent += `
+                <button class="w-full text-left p-4 border-2 border-green-200 rounded-lg hover:bg-green-50 hover:border-green-300 transition-colors"
+                        onclick="calculator.assignPaperSessionToPosition(${day}, ${slot}, ${position}); calculator.closePositionAssignmentModal();">
+                    <div class="flex items-center">
+                        <i class="fas fa-file-alt text-green-600 mr-3 text-xl"></i>
+                        <div>
+                            <div class="font-medium text-gray-800">Paper Session</div>
+                            <div class="text-sm text-gray-500">Create new paper session</div>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-400 ml-auto"></i>
+                    </div>
+                </button>
+        `;
+        
+        modalContent += `
+                            </div>
+                        </div>
+                        <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+                            <button onclick="calculator.closePositionAssignmentModal();" 
+                                    class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to DOM
+        document.body.insertAdjacentHTML('beforeend', modalContent);
+    }
+
+    closePositionAssignmentModal() {
+        const modal = document.getElementById('positionAssignmentModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    showRoundTableOptions(day, slot, position) {
+        // Close current modal
+        this.closePositionAssignmentModal();
+        
+        // Find available round tables
+        const availableRoundTables = [];
+        for (let i = 1; i <= (this.currentResults?.roundTableSessions || 0); i++) {
+            if (!this.roundTableAssignments.has(i)) {
+                availableRoundTables.push(i);
+            }
+        }
+        
+        // Create round table selection modal
+        let modalContent = `
+            <div class="fixed inset-0 z-50 modal-overlay" id="roundTableSelectionModal" style="background-color: rgba(0,0,0,0.5);">
+                <div class="flex items-center justify-center min-h-screen px-4">
+                    <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-800">
+                                <i class="fas fa-users text-purple-600 mr-2"></i>
+                                Select Round Table
+                            </h3>
+                            <p class="text-sm text-gray-600 mt-1">Day ${day}, ${this.formatTimeSlot(day, slot)}, Position ${position + 1}</p>
+                        </div>
+                        <div class="px-6 py-4 max-h-96 overflow-y-auto">
+                            <div class="space-y-2">
+        `;
+        
+        availableRoundTables.forEach(roundTableId => {
+            const roundTableTitle = this.getSessionLabel('round_table', roundTableId);
+            modalContent += `
+                <button class="w-full text-left p-3 border border-gray-200 rounded-md hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                        onclick="calculator.assignRoundTableToPosition(${roundTableId}, ${day}, ${slot}, ${position}); calculator.closeRoundTableSelectionModal();">
+                    <div class="flex items-center">
+                        <i class="fas fa-users text-purple-600 mr-3"></i>
+                        <div>
+                            <div class="font-medium text-gray-800">${roundTableTitle}</div>
+                            <div class="text-sm text-gray-500">Round Table ${roundTableId}</div>
+                        </div>
+                    </div>
+                </button>
+            `;
+        });
+        
+        modalContent += `
+                            </div>
+                        </div>
+                        <div class="px-6 py-4 border-t border-gray-200 flex justify-between">
+                            <button onclick="calculator.openPositionAssignmentModal(${day}, ${slot}, ${position}); calculator.closeRoundTableSelectionModal();" 
+                                    class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
+                                <i class="fas fa-arrow-left mr-2"></i>Back
+                            </button>
+                            <button onclick="calculator.closeRoundTableSelectionModal();" 
+                                    class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to DOM
+        document.body.insertAdjacentHTML('beforeend', modalContent);
+    }
+
+    closeRoundTableSelectionModal() {
+        const modal = document.getElementById('roundTableSelectionModal');
         if (modal) {
             modal.remove();
         }
@@ -1522,6 +1782,19 @@ class ConventionRoomCalculator {
             <div><strong>Day:</strong> ${sessionData.day}</div>
             <div><strong>Session Type:</strong> ${sessionData.type}</div>
         `;
+
+        // Show/hide round table specific fields
+        const roundTableFields = document.getElementById('roundTableFields');
+        const paperSessionFields = document.getElementById('paperSessionFields');
+        
+        if (sessionData.type === 'round table') {
+            roundTableFields.classList.remove('hidden');
+            paperSessionFields.classList.add('hidden');
+            this.populateRoundTableFields(currentSession);
+        } else {
+            roundTableFields.classList.add('hidden');
+            paperSessionFields.classList.remove('hidden');
+        }
         
         document.getElementById('editPaperCount').value = currentSession.paperCount || sessionData.paperCount || 4;
         
@@ -1626,6 +1899,26 @@ class ConventionRoomCalculator {
         document.getElementById('sessionEditModal').classList.remove('hidden');
     }
 
+    populateRoundTableFields(currentSession) {
+        // Set custom round table name
+        const roundTableNameInput = document.getElementById('editRoundTableName');
+        if (roundTableNameInput) {
+            roundTableNameInput.value = currentSession.customName || '';
+        }
+
+        // Populate participants
+        const participants = currentSession.participants || [];
+        for (let i = 0; i < 7; i++) {
+            const nameInput = document.getElementById(`participant${i + 1}Name`);
+            const schoolInput = document.getElementById(`participant${i + 1}School`);
+            
+            if (nameInput && schoolInput) {
+                nameInput.value = participants[i] ? participants[i].name : '';
+                schoolInput.value = participants[i] ? participants[i].school : '';
+            }
+        }
+    }
+
     closeEditModal() {
         document.getElementById('sessionEditModal').classList.add('hidden');
         this.currentEditingSession = null;
@@ -1655,6 +1948,30 @@ class ConventionRoomCalculator {
         const chairName = document.getElementById('editChairName').value.trim();
         const chairSchool = document.getElementById('editChairSchool').value.trim();
         
+        // Get round table specific information
+        let customName = '';
+        let participants = [];
+        
+        if (this.currentEditingSession.data.type === 'round table') {
+            const roundTableNameInput = document.getElementById('editRoundTableName');
+            customName = roundTableNameInput ? roundTableNameInput.value.trim() : '';
+            
+            // Collect participants
+            for (let i = 0; i < 7; i++) {
+                const nameInput = document.getElementById(`participant${i + 1}Name`);
+                const schoolInput = document.getElementById(`participant${i + 1}School`);
+                
+                if (nameInput && schoolInput) {
+                    const name = nameInput.value.trim();
+                    const school = schoolInput.value.trim();
+                    
+                    if (name || school) { // Only add if at least name or school is provided
+                        participants.push({ name, school });
+                    }
+                }
+            }
+        }
+        
         // Save custom session data
         this.customSessions.set(sessionKey, {
             ...this.currentEditingSession.data,
@@ -1666,6 +1983,8 @@ class ConventionRoomCalculator {
             moderatorSchool: moderatorSchool,
             chairName: chairName,
             chairSchool: chairSchool,
+            customName: customName,
+            participants: participants,
             isCustomized: true
         });
         
@@ -1692,6 +2011,8 @@ class ConventionRoomCalculator {
         if (customSession) {
             if (customSession.type === 'paper') {
                 finalTitle = `Paper Session ${customSession.sessionNumber} (${customSession.paperCount} papers)`;
+            } else if (customSession.type === 'round table' && customSession.customName) {
+                finalTitle = customSession.customName;
             }
             finalColor = customSession.isCustomized ? 'blue' : sessionColor;
         }
@@ -1781,6 +2102,30 @@ class ConventionRoomCalculator {
                 </div>
             `;
         }
+
+        // Generate participant information for round tables
+        let participantsHTML = '';
+        if (displayData.type === 'round table' && displayData.participants && displayData.participants.length > 0) {
+            const validParticipants = displayData.participants.filter(p => p.name || p.school);
+            if (validParticipants.length > 0) {
+                participantsHTML = `
+                    <div class="mt-3 pt-3 border-t border-${finalColor}-200">
+                        <div class="text-xs font-medium text-${finalColor}-700 mb-2">
+                            <i class="fas fa-user-friends mr-1"></i>
+                            Participants (${validParticipants.length}/7):
+                        </div>
+                        <div class="space-y-1 max-h-24 overflow-y-auto">
+                            ${validParticipants.map(participant => `
+                                <div class="text-xs text-${finalColor}-600">
+                                    <span class="font-medium">${participant.name || 'No name'}</span>
+                                    ${participant.school ? `<span class="text-gray-500"> - ${participant.school}</span>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
         
         const clickAttributes = isDraggable && displayData.type === 'round table' ? 
             `data-round-table-id="${displayData.sessionNumber}" class="round-table-clickable"` : '';
@@ -1813,6 +2158,7 @@ class ConventionRoomCalculator {
                 </div>
                 ${assignedPapersHTML}
                 ${leadershipHTML}
+                ${participantsHTML}
             </div>
         `;
     }
