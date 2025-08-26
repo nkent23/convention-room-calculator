@@ -925,23 +925,26 @@
                             </div>
                         </div>
                         
-                        <div>
-                            <label for="editPaperCount" class="block text-sm font-medium text-gray-700 mb-1">
-                                Number of Papers
-                            </label>
-                            <input type="number" id="editPaperCount" min="1" max="20" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        
-                        <div>
-                            <label for="editCategory" class="block text-sm font-medium text-gray-700 mb-1">
-                                Session Category
-                            </label>
-                            <select id="editCategorySelect" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2">
-                                <!-- Categories will be populated dynamically -->
-                            </select>
-                            <input type="text" id="editCategoryCustom" placeholder="Enter custom category..." 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 hidden">
+                        <!-- Paper Session Fields -->
+                        <div id="paperSessionFields">
+                            <div>
+                                <label for="editPaperCount" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Number of Papers
+                                </label>
+                                <input type="number" id="editPaperCount" min="1" max="20" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            
+                            <div>
+                                <label for="editCategory" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Session Category
+                                </label>
+                                <select id="editCategorySelect" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2">
+                                    <!-- Categories will be populated dynamically -->
+                                </select>
+                                <input type="text" id="editCategoryCustom" placeholder="Enter custom category..." 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 hidden">
+                            </div>
                         </div>
                         
                         <div>
@@ -998,6 +1001,87 @@
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
                                     <input type="text" id="editChairSchool" placeholder="Institution" 
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Round Table Details (for round table sessions) -->
+                        <div id="roundTableFields" class="border-t border-gray-200 pt-4 hidden">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">
+                                <i class="fas fa-users-round text-green-600 mr-2"></i>
+                                Round Table Configuration
+                            </h4>
+                            
+                            <!-- Custom Round Table Name -->
+                            <div class="mb-4">
+                                <label for="editRoundTableName" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Round Table Name
+                                </label>
+                                <input type="text" id="editRoundTableName" placeholder="e.g., Innovation Strategies, Technology Trends" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                            </div>
+                            
+                            <!-- Participants -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Participants (up to 7)
+                                </label>
+                                <div class="space-y-3">
+                                    <!-- Participant 1 -->
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="text" id="participant1Name" placeholder="Participant 1 Name" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                        <input type="text" id="participant1School" placeholder="Institution" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                    </div>
+                                    
+                                    <!-- Participant 2 -->
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="text" id="participant2Name" placeholder="Participant 2 Name" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                        <input type="text" id="participant2School" placeholder="Institution" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                    </div>
+                                    
+                                    <!-- Participant 3 -->
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="text" id="participant3Name" placeholder="Participant 3 Name" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                        <input type="text" id="participant3School" placeholder="Institution" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                    </div>
+                                    
+                                    <!-- Participant 4 -->
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="text" id="participant4Name" placeholder="Participant 4 Name" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                        <input type="text" id="participant4School" placeholder="Institution" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                    </div>
+                                    
+                                    <!-- Participant 5 -->
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="text" id="participant5Name" placeholder="Participant 5 Name" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                        <input type="text" id="participant5School" placeholder="Institution" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                    </div>
+                                    
+                                    <!-- Participant 6 -->
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="text" id="participant6Name" placeholder="Participant 6 Name" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                        <input type="text" id="participant6School" placeholder="Institution" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                    </div>
+                                    
+                                    <!-- Participant 7 -->
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="text" id="participant7Name" placeholder="Participant 7 Name" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                        <input type="text" id="participant7School" placeholder="Institution" 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
+                                    </div>
                                 </div>
                             </div>
                         </div>
