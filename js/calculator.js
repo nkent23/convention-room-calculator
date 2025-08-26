@@ -1102,21 +1102,29 @@ class ConventionRoomCalculator {
 
         // Show modal
         const modalHTML = `
-            <div id="roundTablePlacementModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                <div class="bg-white rounded-lg max-w-3xl w-full max-h-96 overflow-hidden">
-                    <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-4">
-                        <h3 class="text-lg font-semibold flex items-center">
-                            <i class="fas fa-users mr-2"></i>
-                            Place ${roundTableTitle}
-                        </h3>
-                        <p class="text-sm text-purple-100 mt-1">Click on an available position to place this round table</p>
+            <div id="roundTablePlacementModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="calculator.closeRoundTablePlacementModal()">
+                <div class="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+                    <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-4 flex-shrink-0">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-lg font-semibold flex items-center">
+                                    <i class="fas fa-users mr-2"></i>
+                                    Place ${roundTableTitle}
+                                </h3>
+                                <p class="text-sm text-purple-100 mt-1">Click on an available position to place this round table</p>
+                            </div>
+                            <button onclick="calculator.closeRoundTablePlacementModal()" 
+                                    class="text-white hover:text-purple-200 transition-colors ml-4">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="p-6 max-h-80 overflow-y-auto">
+                    <div class="p-6 flex-1 overflow-y-auto">
                         <div class="space-y-2">
                             ${positionsHTML}
                         </div>
                     </div>
-                    <div class="bg-gray-50 px-6 py-4 flex justify-between">
+                    <div class="bg-gray-50 px-6 py-4 flex justify-between flex-shrink-0">
                         <button onclick="calculator.unassignRoundTable(${roundTableId})" 
                                 class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">
                             <i class="fas fa-trash mr-2"></i>
@@ -1436,15 +1444,23 @@ class ConventionRoomCalculator {
     openPositionAssignmentModal(day, slot, position) {
         // Create modal content for position-specific assignment
         let modalContent = `
-            <div class="fixed inset-0 z-50 modal-overlay" id="positionAssignmentModal" style="background-color: rgba(0,0,0,0.5);">
+            <div class="fixed inset-0 z-50 modal-overlay" id="positionAssignmentModal" style="background-color: rgba(0,0,0,0.5);" onclick="calculator.closePositionAssignmentModal()">
                 <div class="flex items-center justify-center min-h-screen px-4">
-                    <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                    <div class="bg-white rounded-lg shadow-xl max-w-md w-full" onclick="event.stopPropagation()">
                         <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-800">
-                                <i class="fas fa-plus-circle text-blue-600 mr-2"></i>
-                                Assign Session
-                            </h3>
-                            <p class="text-sm text-gray-600 mt-1">Choose what to assign to Day ${day}, Time Slot ${slot + 1}, Position ${position + 1}</p>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-800">
+                                        <i class="fas fa-plus-circle text-blue-600 mr-2"></i>
+                                        Assign Session
+                                    </h3>
+                                    <p class="text-sm text-gray-600 mt-1">Choose what to assign to Day ${day}, Time Slot ${slot + 1}, Position ${position + 1}</p>
+                                </div>
+                                <button onclick="calculator.closePositionAssignmentModal()" 
+                                        class="text-gray-400 hover:text-gray-600 transition-colors ml-4">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="px-6 py-4">
                             <div class="space-y-3">
@@ -1528,15 +1544,23 @@ class ConventionRoomCalculator {
         
         // Create round table selection modal
         let modalContent = `
-            <div class="fixed inset-0 z-50 modal-overlay" id="roundTableSelectionModal" style="background-color: rgba(0,0,0,0.5);">
+            <div class="fixed inset-0 z-50 modal-overlay" id="roundTableSelectionModal" style="background-color: rgba(0,0,0,0.5);" onclick="calculator.closeRoundTableSelectionModal()">
                 <div class="flex items-center justify-center min-h-screen px-4">
-                    <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                    <div class="bg-white rounded-lg shadow-xl max-w-md w-full" onclick="event.stopPropagation()">
                         <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-800">
-                                <i class="fas fa-users text-purple-600 mr-2"></i>
-                                Select Round Table
-                            </h3>
-                            <p class="text-sm text-gray-600 mt-1">Day ${day}, Time Slot ${slot + 1}, Position ${position + 1}</p>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-800">
+                                        <i class="fas fa-users text-purple-600 mr-2"></i>
+                                        Select Round Table
+                                    </h3>
+                                    <p class="text-sm text-gray-600 mt-1">Day ${day}, Time Slot ${slot + 1}, Position ${position + 1}</p>
+                                </div>
+                                <button onclick="calculator.closeRoundTableSelectionModal()" 
+                                        class="text-gray-400 hover:text-gray-600 transition-colors ml-4">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="px-6 py-4 max-h-96 overflow-y-auto">
                             <div class="space-y-2">
