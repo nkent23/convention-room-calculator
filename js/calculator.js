@@ -4917,6 +4917,9 @@ class ConventionRoomCalculator {
     }
 
     openSessionLabelsModal() {
+        // Always recalculate to ensure we have the latest session counts
+        this.calculateRequirements();
+        
         if (!this.currentResults) {
             alert('Please calculate the schedule first to see available sessions.');
             return;
@@ -4938,29 +4941,54 @@ class ConventionRoomCalculator {
         const paperContainer = document.getElementById('paperSessionLabelsContainer');
         const roundTableContainer = document.getElementById('roundTableLabelsContainer');
         
-        // Generate paper session inputs
+        // Generate paper session inputs based on total possible sessions
         let paperHTML = '';
-        if (this.currentResults.sessionDistribution && this.currentResults.sessionDistribution.sessions) {
-            this.currentResults.sessionDistribution.sessions.forEach((session, index) => {
-                const sessionKey = `paper_session_${session.id}`;
-                const customLabel = this.customSessionLabels.get(sessionKey) || '';
-                
-                paperHTML += `
-                    <div class="flex items-center space-x-3">
-                        <div class="w-20 text-sm font-medium text-gray-700 bg-green-100 px-2 py-1 rounded text-center">
-                            Session ${session.id}
-                        </div>
-                        <input type="text" 
-                               id="sessionLabel_${sessionKey}" 
-                               placeholder="e.g., Medieval Poetry Panel, Contemporary Voices"
-                               value="${customLabel}"
-                               class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm">
-                        <div class="text-xs text-gray-500 w-16">
-                            ${session.paperCount} papers
-                        </div>
+        
+        // Calculate maximum number of possible paper sessions based on current parameters
+        const formData = this.getFormData();
+        let totalPossibleSessions = 0;
+        
+        for (let day = 1; day <= formData.conventionDays; day++) {
+            const dayIndex = day - 1;
+            const timeSlotsThisDay = formData.timeSlotsPerDayArray ? formData.timeSlotsPerDayArray[dayIndex] : formData.timeSlotsPerDay;
+            const sessionsPerSlotThisDay = formData.sessionsPerSlotPerDayArray ? formData.sessionsPerSlotPerDayArray[dayIndex] : formData.sessionsPerTimeSlot;
+            totalPossibleSessions += timeSlotsThisDay * sessionsPerSlotThisDay;
+        }
+        
+        // Subtract round table sessions to get paper session capacity
+        const maxPaperSessions = Math.max(0, totalPossibleSessions - formData.totalRoundTables);
+        
+        // Generate inputs for all possible paper sessions (up to a reasonable limit)
+        const sessionLimit = Math.max(maxPaperSessions, this.currentResults.paperSessions || 0, 10); // At least 10 or current count
+        
+        for (let i = 1; i <= sessionLimit; i++) {
+            const sessionKey = `paper_session_${i}`;
+            const customLabel = this.customSessionLabels.get(sessionKey) || '';
+            
+            // Get paper count from existing session data if available
+            let paperCount = 4; // default
+            if (this.currentResults.sessionDistribution && this.currentResults.sessionDistribution.sessions) {
+                const existingSession = this.currentResults.sessionDistribution.sessions.find(s => s.id === i);
+                if (existingSession) {
+                    paperCount = existingSession.paperCount;
+                }
+            }
+            
+            paperHTML += `
+                <div class="flex items-center space-x-3">
+                    <div class="w-20 text-sm font-medium text-gray-700 bg-green-100 px-2 py-1 rounded text-center">
+                        Session ${i}
                     </div>
-                `;
-            });
+                    <input type="text" 
+                           id="sessionLabel_${sessionKey}" 
+                           placeholder="e.g., Medieval Poetry Panel, Contemporary Voices"
+                           value="${customLabel}"
+                           class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm">
+                    <div class="text-xs text-gray-500 w-16">
+                        ${i <= (this.currentResults.paperSessions || 0) ? `${paperCount} papers` : 'unused'}
+                    </div>
+                </div>
+            `;
         }
         
         if (paperHTML === '') {
@@ -4969,10 +4997,12 @@ class ConventionRoomCalculator {
         
         paperContainer.innerHTML = paperHTML;
         
-        // Generate round table session inputs
+        // Generate round table session inputs based on current form data
         let roundTableHTML = '';
-        if (this.currentResults.roundTableSessions > 0) {
-            for (let i = 1; i <= this.currentResults.roundTableSessions; i++) {
+        const currentRoundTables = formData.totalRoundTables;
+        
+        if (currentRoundTables > 0) {
+            for (let i = 1; i <= currentRoundTables; i++) {
                 const sessionKey = `round_table_${i}`;
                 const customLabel = this.customSessionLabels.get(sessionKey) || '';
                 
