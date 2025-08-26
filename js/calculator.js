@@ -85,6 +85,10 @@ class ConventionRoomCalculator {
         });
 
         // Assign papers to sessions
+        document.getElementById('autoPopulateBtn').addEventListener('click', () => {
+            this.autoPopulateSessions();
+        });
+
         document.getElementById('assignPapersBtn').addEventListener('click', () => {
             this.openPaperAssignmentModal();
         });
@@ -640,6 +644,11 @@ class ConventionRoomCalculator {
             this.roundTableAssignments = new Map(); // Maps roundTableId -> {day, timeSlot, slotIndex}
         }
         
+        // Initialize paper session assignments if not exists
+        if (!this.paperSessionAssignments) {
+            this.paperSessionAssignments = new Map(); // Maps positionKey -> {sessionNumber, title, paperCount, category, color}
+        }
+        
         let paperSessionCount = 0;
         let breakdownHTML = '';
         
@@ -700,11 +709,11 @@ class ConventionRoomCalculator {
                     for (let position = 0; position < sessionsPerSlotThisDay; position++) {
                         const positionKey = `day${day}_slot${slot}_pos${position}`;
                         
-                        // Check if this position has an assigned round table
+                        // Check if this position has assigned sessions
                         const assignedRoundTable = this.getAssignedRoundTableForPosition(day, slot, position);
                         
-                        // Check if this position should have a paper session
-                        const shouldHavePaper = !assignedRoundTable && this.shouldAssignPaperToPosition(day, slot, position, paperSessionCount, results.paperSessions);
+                        // Check if this position has an assigned paper session
+                        const assignedPaper = this.getAssignedPaperForPosition(day, slot, position);
                         
                         if (assignedRoundTable) {
                             // Render assigned round table
@@ -725,32 +734,13 @@ class ConventionRoomCalculator {
                                 'purple',
                                 'users',
                                 roundTableTitle,
-                                true // isDraggable
+                                true, // isDraggable
+                                true  // isModifiable
                             );
-                        } else if (shouldHavePaper) {
-                            // Render paper session
-                            const sessionInfo = results.sessionDistribution.sessions[paperSessionCount];
-                            const paperSessionId = paperSessionCount + 1;
-                            
-                            // Get custom session name or fall back to default
-                            const customSessionName = this.getSessionLabel('paper_session', sessionInfo ? sessionInfo.id : paperSessionId);
-                            let sessionTitle = customSessionName;
-                            
-                            // If using custom name, include paper count
-                            if (customSessionName !== `Paper Session ${paperSessionId}`) {
-                                const paperCount = sessionInfo ? sessionInfo.paperCount : results.papersPerSession;
-                                sessionTitle += ` (${paperCount} papers)`;
-                            } else {
-                                sessionTitle = sessionInfo ? sessionInfo.title : `Paper Session ${paperSessionId}`;
-                            }
-                            
-                            let sessionColor = 'green';
-                            
-                            // Add category indicator and color
-                            if (sessionInfo && sessionInfo.category) {
-                                const categoryColor = this.getCategoryColor(sessionInfo.category);
-                                sessionColor = categoryColor || 'green';
-                            }
+                        } else if (assignedPaper) {
+                            // Render assigned paper session
+                            const sessionInfo = assignedPaper;
+                            const sessionTitle = sessionInfo.title || `Paper Session ${sessionInfo.sessionNumber}`;
                             
                             // Create session data for editing
                             const sessionData = {
@@ -758,9 +748,9 @@ class ConventionRoomCalculator {
                                 timeSlot: slotLabel,
                                 position: position,
                                 type: 'paper',
-                                sessionNumber: paperSessionId,
-                                paperCount: sessionInfo ? sessionInfo.paperCount : results.papersPerSession,
-                                category: sessionInfo ? sessionInfo.category : null
+                                sessionNumber: sessionInfo.sessionNumber,
+                                paperCount: sessionInfo.paperCount || 4,
+                                category: sessionInfo.category || null
                             };
                             
                             const sessionKey = this.getSessionKey(day, slotLabel, position);
@@ -768,12 +758,12 @@ class ConventionRoomCalculator {
                             breakdownHTML += this.generateEditableSessionCard(
                                 sessionData,
                                 sessionKey,
-                                sessionColor,
+                                sessionInfo.color || 'green',
                                 'file-alt',
-                                sessionTitle
+                                sessionTitle,
+                                false, // isDraggable
+                                true   // isModifiable
                             );
-                            
-                            paperSessionCount++;
                         } else {
                             // Render empty position slot
                             breakdownHTML += `
@@ -896,6 +886,12 @@ class ConventionRoomCalculator {
             }
         }
         return null;
+    }
+
+    getAssignedPaperForPosition(day, slot, position) {
+        // Find paper session assigned to specific position
+        const positionKey = `day${day}_slot${slot}_pos${position}`;
+        return this.paperSessionAssignments.get(positionKey) || null;
     }
 
     findNextAvailablePosition(day, slot, maxSessions) {
@@ -1195,14 +1191,136 @@ class ConventionRoomCalculator {
     }
 
     assignPaperSessionToPosition(day, slot, position) {
-        // For now, just refresh the display - the paper session will be auto-generated
-        // This is a placeholder for future paper session position assignment logic
+        // Create a new paper session assignment
+        const positionKey = `day${day}_slot${slot}_pos${position}`;
+        
+        // Find next available session number
+        let nextSessionNumber = 1;
+        const existingNumbers = new Set();
+        this.paperSessionAssignments.forEach(session => {
+            existingNumbers.add(session.sessionNumber);
+        });
+        
+        while (existingNumbers.has(nextSessionNumber)) {
+            nextSessionNumber++;
+        }
+        
+        // Create paper session data
+        const paperSession = {
+            sessionNumber: nextSessionNumber,
+            title: `Paper Session ${nextSessionNumber}`,
+            paperCount: 4,
+            category: null,
+            color: 'green'
+        };
+        
+        // Assign to position
+        this.paperSessionAssignments.set(positionKey, paperSession);
+        
+        // Close modal and refresh display
         this.closePositionAssignmentModal();
         this.generateDetailedBreakdown(this.currentResults);
         
         const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
         const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
-        this.showNotification(`Paper session will be assigned to Day ${day}, ${slotLabel}, Position ${position + 1}`, 'info');
+        this.showNotification(`Paper Session ${nextSessionNumber} assigned to Day ${day}, ${slotLabel}, Position ${position + 1}`, 'success');
+    }
+
+    removeSessionFromPosition(day, slot, position, sessionType) {
+        const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+        const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
+        
+        if (sessionType === 'round table') {
+            // Find and remove round table assignment
+            const roundTableId = this.getAssignedRoundTableForPosition(day, slot, position);
+            if (roundTableId) {
+                this.roundTableAssignments.delete(roundTableId);
+                this.showNotification(`Round Table ${roundTableId} removed from Day ${day}, ${slotLabel}, Position ${position + 1}`, 'success');
+            }
+        } else if (sessionType === 'paper') {
+            // Remove paper session assignment
+            const positionKey = `day${day}_slot${slot}_pos${position}`;
+            const paperSession = this.paperSessionAssignments.get(positionKey);
+            if (paperSession) {
+                this.paperSessionAssignments.delete(positionKey);
+                this.showNotification(`Paper Session ${paperSession.sessionNumber} removed from Day ${day}, ${slotLabel}, Position ${position + 1}`, 'success');
+            }
+        }
+        
+        // Refresh display
+        this.generateDetailedBreakdown(this.currentResults);
+    }
+
+    autoPopulateSessions() {
+        if (!this.currentResults) {
+            this.showNotification('Please calculate the schedule first before auto-populating sessions.', 'error');
+            return;
+        }
+
+        // Clear existing assignments
+        this.paperSessionAssignments.clear();
+        this.roundTableAssignments.clear();
+
+        const results = this.currentResults;
+        let paperSessionCount = 0;
+        let roundTableCount = 0;
+
+        // Iterate through all days and time slots
+        for (let day = 1; day <= results.conventionDays; day++) {
+            const dayIndex = day - 1;
+            const timeSlotsThisDay = results.timeSlotsPerDayArray ? results.timeSlotsPerDayArray[dayIndex] : results.timeSlotsPerDay;
+            const sessionsPerSlotThisDay = results.sessionsPerSlotPerDayArray ? results.sessionsPerSlotPerDayArray[dayIndex] : results.sessionsPerTimeSlot;
+
+            for (let slot = 0; slot < timeSlotsThisDay; slot++) {
+                // For each position in this time slot
+                for (let position = 0; position < sessionsPerSlotThisDay; position++) {
+                    // Auto-populate logic: Round tables go in last positions, papers in earlier positions
+                    const isLastPosition = position === (sessionsPerSlotThisDay - 1);
+                    
+                    if (isLastPosition && roundTableCount < results.roundTableSessions) {
+                        // Assign round table to last position
+                        roundTableCount++;
+                        this.roundTableAssignments.set(roundTableCount, {
+                            day: day,
+                            slotIndex: slot,
+                            position: position
+                        });
+                    } else if (!isLastPosition && paperSessionCount < results.paperSessions) {
+                        // Assign paper session to earlier positions
+                        paperSessionCount++;
+                        const positionKey = `day${day}_slot${slot}_pos${position}`;
+                        
+                        this.paperSessionAssignments.set(positionKey, {
+                            sessionNumber: paperSessionCount,
+                            title: `Paper Session ${paperSessionCount}`,
+                            paperCount: 4,
+                            category: null,
+                            color: 'green'
+                        });
+                    }
+                    
+                    // Break if we've assigned all sessions
+                    if (paperSessionCount >= results.paperSessions && roundTableCount >= results.roundTableSessions) {
+                        break;
+                    }
+                }
+                
+                // Break if we've assigned all sessions
+                if (paperSessionCount >= results.paperSessions && roundTableCount >= results.roundTableSessions) {
+                    break;
+                }
+            }
+            
+            // Break if we've assigned all sessions
+            if (paperSessionCount >= results.paperSessions && roundTableCount >= results.roundTableSessions) {
+                break;
+            }
+        }
+
+        // Refresh display
+        this.generateDetailedBreakdown(this.currentResults);
+        
+        this.showNotification(`Auto-populated ${paperSessionCount} paper sessions and ${roundTableCount} round tables (round tables placed in end positions)`, 'success');
     }
 
     openTimeSlotAssignmentModal(day, slot) {
@@ -1999,7 +2117,7 @@ class ConventionRoomCalculator {
         return `day-${day}-slot-${timeSlot}-session-${sessionIndex}`;
     }
 
-    generateEditableSessionCard(sessionData, sessionKey, sessionColor, sessionIcon, sessionTitle, isDraggable = false) {
+    generateEditableSessionCard(sessionData, sessionKey, sessionColor, sessionIcon, sessionTitle, isDraggable = false, isModifiable = false) {
         // Check for custom session data
         const customSession = this.customSessions.get(sessionKey);
         const displayData = customSession || sessionData;
@@ -2153,7 +2271,18 @@ class ConventionRoomCalculator {
                     </div>
                     <div class="text-xs text-${finalColor}-600 font-medium flex items-center">
                         ${displayData.type ? displayData.type.toUpperCase() : 'SESSION'}
-                        <i class="fas fa-edit text-xs ml-2 edit-indicator"></i>
+                        ${isModifiable ? `
+                            <div class="ml-2 flex items-center space-x-1">
+                                <button onclick="event.stopPropagation(); calculator.openEditModal('${sessionKey}', ${JSON.stringify(sessionData).replace(/"/g, '&quot;')})" 
+                                        class="text-${finalColor}-500 hover:text-${finalColor}-700 transition-colors" title="Edit session">
+                                    <i class="fas fa-edit text-xs"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); calculator.removeSessionFromPosition(${sessionData.day}, ${sessionData.timeSlot}, ${sessionData.position}, '${sessionData.type}')" 
+                                        class="text-red-500 hover:text-red-700 transition-colors" title="Remove session">
+                                    <i class="fas fa-times text-xs"></i>
+                                </button>
+                            </div>
+                        ` : `<i class="fas fa-edit text-xs ml-2 edit-indicator"></i>`}
                     </div>
                 </div>
                 ${assignedPapersHTML}
