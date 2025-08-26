@@ -745,7 +745,7 @@ class ConventionRoomCalculator {
                             // Create session data for editing
                             const sessionData = {
                                 day: day,
-                                timeSlot: slotLabel,
+                                timeSlot: slot,
                                 position: position,
                                 type: 'paper',
                                 sessionNumber: sessionInfo.sessionNumber,
