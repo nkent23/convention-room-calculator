@@ -265,7 +265,8 @@ class ConventionRoomCalculator {
             const totalTimeSlots = data.totalTimeSlots;
             totalRoomSlots = totalTimeSlots * data.availableRooms;
             totalSessionCapacity = totalTimeSlots * data.sessionsPerTimeSlot;
-            minRoomsNeeded = Math.ceil(totalSessions / totalTimeSlots);
+            // Fix: Minimum rooms needed should be based on concurrent sessions, not total sessions
+            minRoomsNeeded = data.sessionsPerTimeSlot; // Each time slot needs this many concurrent rooms
         }
         
         // Calculate if it's feasible
@@ -310,13 +311,49 @@ class ConventionRoomCalculator {
         }
 
         const sessions = [];
-        let remainingPapers = data.totalPapers;
         let sessionId = 1;
 
         // Ensure min/max are properly ordered
         const minPapers = Math.min(data.minPapersPerSession, data.maxPapersPerSession);
         const maxPapers = Math.max(data.minPapersPerSession, data.maxPapersPerSession);
         const standardPapers = Math.max(minPapers, Math.min(maxPapers, data.papersPerSession));
+        
+        // Calculate desired number of sessions based on "Sessions per Time Slot"
+        const totalTimeSlots = data.conventionDays * data.timeSlotsPerDay;
+        const maxPossibleSessions = totalTimeSlots * data.sessionsPerTimeSlot;
+        
+        // Try to create enough sessions to utilize the "Sessions per Time Slot" setting
+        // but don't go below 1 paper per session or above maxPossibleSessions
+        const idealSessionCount = Math.min(maxPossibleSessions, data.totalPapers);
+        const targetSessionCount = idealSessionCount > 0 ? idealSessionCount : Math.ceil(data.totalPapers / standardPapers);
+        
+        // If we can distribute papers across the target number of sessions
+        if (targetSessionCount > 0 && data.totalPapers >= targetSessionCount) {
+            // Distribute papers as evenly as possible across target sessions
+            const basePapersPerSession = Math.floor(data.totalPapers / targetSessionCount);
+            const extraPapers = data.totalPapers % targetSessionCount;
+            
+            for (let i = 0; i < targetSessionCount; i++) {
+                const papersInThisSession = basePapersPerSession + (i < extraPapers ? 1 : 0);
+                
+                sessions.push({
+                    id: sessionId++,
+                    paperCount: papersInThisSession,
+                    title: `Paper Session ${sessionId - 1} (${papersInThisSession} papers)`,
+                    type: 'paper',
+                    category: this.categorizeSession(papersInThisSession, minPapers, maxPapers, standardPapers)
+                });
+            }
+            
+            return {
+                sessions: sessions,
+                totalPapers: data.totalPapers,
+                sessionStats: this.calculateSessionStats(sessions, minPapers, maxPapers, standardPapers)
+            };
+        }
+        
+        // Fallback to original algorithm if target distribution doesn't work
+        let remainingPapers = data.totalPapers;
 
         while (remainingPapers > 0) {
             let papersInThisSession;
