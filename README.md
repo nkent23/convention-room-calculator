@@ -1,357 +1,236 @@
 # Convention Room Calculator
 
-A comprehensive web-based tool for calculating optimal room allocation for academic conventions with paper presentations and round table discussions.
+A comprehensive web application for planning and organizing academic conference room scheduling with drag-and-drop functionality for manual round table placement.
 
-## 🎯 Project Overview
-
-This calculator helps convention organizers determine the feasibility of their event by analyzing:
-- Number of available rooms at the venue
-- Total papers and round table sessions to accommodate
-- Convention duration and daily time slots
-- Room utilization and optimization suggestions
-
-## ✨ Currently Completed Features
+## 🎯 Currently Completed Features
 
 ### Core Functionality
-- **Room Requirement Calculation**: Determines minimum rooms needed based on sessions and time constraints
-- **Feasibility Analysis**: Indicates whether the convention can be accommodated with available resources
-- **Real-time Updates**: Calculations update automatically as inputs change
+- **Dynamic Room Calculation**: Calculates required rooms, sessions, and scheduling based on papers and round tables
+- **Multi-day Convention Support**: Handles conventions spanning multiple days with flexible time slot configurations
+- **Real-time Updates**: All calculations update automatically when input parameters change
+- **PDF Export**: Generate comprehensive PDF schedules with all session details
 
-### Input Parameters
-- Convention duration (days)
-- Time slots per day (standard or custom per day)
-- Available rooms at hotel
-- Total number of papers to present
-- Papers per session
-- Number of round table discussions
-- Sessions per round table
+### Session Management
+- **Paper Sessions**: Automatic distribution based on paper count and session constraints
+- **Round Table Sessions**: Manual drag-and-drop placement into specific time slots
+- **Category-based Organization**: Support for custom paper categories (e.g., Medieval Literature, Modern Literature)
+- **Session Customization**: Edit individual sessions with custom names, moderators, chairs, rooms, and notes
 
-### Results Display
-- **Status Dashboard**: Clear feasible/not feasible indication with utilization percentage
-- **Key Metrics**: Minimum rooms needed, total sessions required
-- **Session Breakdown**: Detailed count of paper sessions vs. round table sessions
-- **Daily Planning**: Sessions per day, rooms used per day, buffer rooms available
+### Advanced Scheduling Features
+- **Mixed Session Scheduling**: Full support for combining round tables and paper sessions within the same time slot
+- **Position-Specific Placement**: Individual control over each session position within time slots (Position 1, 2, 3, etc.)
+- **Manual Round Table Placement**: Click-to-select interface for placing round tables into specific positions
+- **Flexible Session Assignment**: Choose between round table or paper session for any available position
+- **Interactive Modal Selection**: Multi-level modal system for session type selection and specific assignment
+- **Unassigned Round Tables Pool**: Visual pool of unassigned round tables with click-to-place functionality
+- **Dual Selection Methods**: Click on round tables to choose placement, or click on empty positions to assign content
+- **Position-based Validation**: Prevents conflicts by tracking assignments at the individual position level
+- **Round Table Customization**: Full customization of round table names and participant details (up to 7 participants per table)
 
-### Advanced Analytics
-- **Detailed Schedule Table**: Day-by-day breakdown of room usage and utilization with variable time slots support
-- **Interactive Chart**: Visual representation of daily room utilization showing custom slot configurations
-- **Session Breakdown Grid**: Complete schedule with continuous alphabet time slots (A, B, C, D, E, F...)
-- **Prioritized Session Distribution**: Paper sessions scheduled first, followed by round tables at the end of the convention
-- **Custom Time Slots**: Flexible per-day time slot configuration (e.g., Day 1: 1 slot, Day 2-3: 4 slots each)
-- **PDF Export**: Professional schedule export with full session details including leadership and custom time slots
-- **Optimization Suggestions**: Recommendations when configuration is not feasible
+### Paper and Participant Management
+- **Individual Paper Tracking**: Add specific papers with titles, authors, schools, and categories
+- **Paper-to-Session Assignment**: Drag-and-drop interface for assigning specific papers to specific sessions
+- **CSV Import/Export**: Bulk import papers from CSV files and export for external use
+- **Moderator Management**: Database of moderators with contact information and bio
+- **Chair Management**: Database of session chairs with institutional affiliations
 
-### Session Leadership Management
-- **Moderator Database**: Create and manage a database of potential moderators with contact details
-- **Chair Database**: Maintain a roster of session chairs with institutional affiliations
-- **Smart Assignment**: Dropdown selection from pre-defined moderators and chairs
-- **Custom Entry**: Option to enter custom leadership for one-time assignments
-- **Comprehensive Profiles**: Store names, institutions, emails, and biographical information
-- **Easy Management**: Add, edit, and delete moderators and chairs through dedicated modals
-- **Visual Display**: Leadership information appears directly in schedule breakdown
-- **PDF Integration**: Moderator and chair details included in exported schedules
-- **Flexible Assignment**: Either or both roles can be assigned per session
+### Customization Options
+- **Custom Room Names**: Replace default room numbering with meaningful names (e.g., "Auditorium A", "Conference Hall")
+- **Time Slot Scheduling**: Set specific times for each time slot (e.g., "9:00 AM", "10:30 AM")
+- **Custom Time Slot Labels**: Replace default labels (A, B, C) with descriptive names (e.g., "Opening Keynote", "Morning Session")
+- **Custom Session Labels**: Personalize session names beyond default numbering
+- **Per-Day Configuration**: Different numbers of time slots, rooms, and sessions per day
+- **Category Color Coding**: Visual organization with color-coded session categories
+- **Round Table Participant Management**: 
+  - Custom round table names (e.g., "Innovation Strategies", "Technology Trends")
+  - Up to 7 participants per round table with full name and institutional affiliation
+  - Modal-based editing interface for easy participant management
 
-### Paper Management System
-- **Paper Database**: Add, edit, and manage individual paper details (title, student, school, category)
-- **CSV Import/Export**: Bulk import/export of paper data for easy management
-- **Category System**: Organize papers by English literature categories (Poetry, Drama, Fiction, etc.)
-- **Paper Assignment Modal**: Interactive drag-and-drop interface for assigning papers to sessions
-- **Scrollable Interface**: Optimized scrollbar functionality for large paper collections
-- **Assignment Tracking**: Real-time counters for assigned vs. unassigned papers
-- **Schedule Integration**: Assigned papers display directly underneath their sessions in the schedule breakdown
-- **Visual Paper Display**: Each session shows individual paper titles, students, and schools when papers are assigned
+### Data Persistence
+- **Supabase Integration**: Automatic saving and loading of all configuration data
+- **Session State Management**: Maintains round table assignments, customizations, and preferences
+- **Cross-session Continuity**: Data persists across browser sessions
 
-### Room Management System
-- **Custom Room Names**: Replace generic "Room 1", "Room 2" with actual venue names
-- **Flexible Naming**: Use descriptive names like "Conference Hall A", "Auditorium", "Meeting Room 101"
-- **Real-time Updates**: Room name changes apply immediately to all schedules and exports
-- **Easy Management**: Simple modal interface to manage all room names at once
-- **Smart Defaults**: Automatically falls back to numbered rooms if no custom name is provided
-- **Export Integration**: Custom room names appear in PDF exports and all schedule displays
+## 🔄 Current Functional Entry URIs (Paths and Parameters)
 
-### Custom Naming System
-- **Time Slot Labels**: Replace generic "A", "B", "C" with meaningful names like "Opening Keynote", "Morning Session", "Lunch Break"
-- **Session Names**: Customize session titles from "Session 1" to descriptive names like "Medieval Poetry Panel", "Graduate Showcase"
-- **Per-Day Customization**: Different time slot names for each day (e.g., Day 1: "Opening", "Welcome"; Day 2: "Morning", "Afternoon")
-- **Smart Fallbacks**: Automatically uses default labels when custom names aren't provided
-- **Complete Integration**: Custom names appear throughout the interface, schedule breakdown, and PDF exports
-- **Easy Management**: User-friendly modals for managing time slot and session labels
-- **Real-time Updates**: Name changes immediately reflect in all displays and calculations
-- **Flexible Assignment**: Mix custom and default names as needed for different parts of the schedule
+### Main Interface
+- **`/index.html`** - Primary calculator interface with all functionality
+- **Form Parameters**:
+  - `conventionDays` - Number of convention days (default: 3)
+  - `timeSlotsPerDay` - Time slots per day (default: 4) 
+  - `availableRooms` - Total available rooms (default: 10)
+  - `sessionsPerTimeSlot` - Concurrent sessions per slot (default: 3)
+  - `totalPapers` - Total number of papers (default: 0)
+  - `totalRoundTables` - Total number of round tables (default: 0)
 
-### Comprehensive Daily Configuration Management
-- **Per-Day Customization**: Configure time slots, available rooms, and sessions per time slot for each day independently
-- **Flexible Hotel Availability**: Account for different room availability per day (e.g., banquet rooms only available certain days)
-- **Variable Session Capacity**: Adjust concurrent sessions per time slot based on daily requirements and room configurations
-- **Real-time Calculations**: All calculations automatically adjust to accommodate per-day variations
-- **Intelligent Capacity Planning**: System calculates total convention capacity based on each day's individual configuration
-- **Visual Configuration Interface**: User-friendly modal with per-day inputs and real-time capacity calculations
-- **Complete Integration**: Schedule tables, charts, and PDF exports all reflect custom daily configurations
-- **Smart Distribution**: Sessions distributed optimally across days based on each day's actual capacity
-- **Consistent Time Slot Labeling**: Each day uses A, B, C, D... labeling independently (Day 1: A,B,C; Day 2: A,B,C,D etc.)
-- **Accurate Time Display**: Time slot scheduling properly accounts for variable slots per day
-- **Easy Reset**: One-click reset to standard configuration if customization is no longer needed
-- **Example Use Cases**: 
-  - **Day 1 (Opening)**: 1 time slot, 5 rooms available, 12 sessions (limited venue access for setup)
-  - **Day 2-3 (Main Conference)**: 4 time slots, 10 rooms available, 3 sessions per slot (full venue access)
-  - **Day 4 (Closing)**: 2 time slots, 8 rooms available, 2 sessions per slot (partial venue for wrap-up)
-- **Realistic Hotel Scenarios**: Handle real-world constraints where different meeting spaces are available on different days
+### Interactive Features
+- **Position-Specific Assignment**:
+  - `.session-position-slot` - Clickable empty position slots for session assignment
+  - `onclick="calculator.openPositionAssignmentModal(day, slot, position)"` - Position-specific assignment modals
+  - Individual session positions numbered 1, 2, 3, etc. within each time slot
 
-### User Interface
-- **Responsive Design**: Works on desktop, tablet, and mobile devices
-- **Modern Styling**: Clean, professional interface with Tailwind CSS
-- **Real-time Validation**: Instant feedback on input changes
-- **Visual Indicators**: Color-coded status and utilization metrics
-- **Modal Overlays**: Professional modal interfaces with proper scrolling and interaction
+- **Round Table Assignment**:
+  - `.round-table-clickable` - Clickable round table cards for placement selection
+  - `.drop-zone-placeholder` - Legacy time slot areas (still supported for backward compatibility)
+  - Dual-path assignment: choose session type first, then specific round table
 
-## 🚀 Functional Entry Points
+- **Modal Interfaces**:
+  - **Position Assignment Modal**: Choose between round table or paper session for specific position
+  - **Round Table Selection Modal**: Choose specific round table after selecting round table option
+  - Session editing modals for customization (round table vs paper session specific fields)
+  - Paper management modals for bulk operations
+  - Category management for organizational structure
+  - Room, moderator, and chair management interfaces
 
-### Main Interface (`index.html`)
-**Path**: `/` or `/index.html`
+## 🚧 Features Not Yet Implemented
 
-**Key Sections**:
-- **Input Form**: Convention details configuration
-- **Room Management**: Customize room names and manage venue details
-- **Paper Management**: Add, edit, and assign individual papers to sessions
-- **Results Panel**: Real-time calculation display
-- **Detailed Breakdown**: Advanced analytics and scheduling with room assignments
-- **Planning Tips**: Best practices guidance
+### Enhanced User Experience
+- **Round Table Selection Dialog**: Pop-up to choose specific round table when dropping into slots
+- **Conflict Resolution**: Automatic handling of scheduling conflicts
+- **Capacity Warnings**: Alert system for over-capacity situations
+- **Undo/Redo Functionality**: Action history for easy mistake correction
 
-**Input Parameters**:
-- `conventionDays`: Number of days (default: 3)
-- `timeSlotsPerDay`: Time slots per day - standard value (default: 4)
-- `availableRooms`: Hotel rooms available - standard value (default: 10)
-- `sessionsPerTimeSlot`: Concurrent sessions per time slot - standard value (default: 3)
-- `customDailyConfig`: Optional per-day configuration:
-  - `customTimeSlots`: Time slots per specific day (overrides standard)
-  - `customRoomsPerDay`: Available rooms per specific day (overrides standard)
-  - `customSessionsPerSlot`: Sessions per time slot per specific day (overrides standard)
-- `totalPapers`: Papers to present (default: 60)
-- `papersPerSession`: Papers per session (default: 4)
-- `papersPerRoom`: Papers per room concurrent presentations (default: 1)
-- `totalRoundTables`: Round table discussions (default: 12)
-- `roundTableDuration`: Sessions per round table (default: 1)
+### Advanced Scheduling
+- **Auto-scheduling Algorithms**: Intelligent automatic placement suggestions
+- **Presenter Availability**: Integration of presenter time constraints
+- **Room Equipment Matching**: Match sessions to rooms based on equipment needs
+- **Multi-track Conferences**: Support for parallel conference tracks
 
-## 🔧 Technical Implementation
+### Reporting and Analytics
+- **Utilization Analytics**: Detailed room and time slot utilization reports
+- **Conflict Reports**: Automated detection and reporting of scheduling conflicts
+- **Attendance Projections**: Capacity planning based on expected attendance
+- **Resource Optimization**: Suggestions for better resource utilization
 
-### Technologies Used
-- **HTML5**: Semantic structure and accessibility
-- **Tailwind CSS**: Modern responsive styling
-- **Vanilla JavaScript**: Core calculation logic and DOM manipulation
-- **Chart.js**: Interactive utilization charts
-- **jsPDF**: PDF generation for schedules and reports
-- **Font Awesome**: Professional iconography
-- **Drag & Drop API**: Native HTML5 drag-and-drop for paper assignment
-- **CSS Grid & Flexbox**: Advanced layout for modal interfaces
+### Integration Features
+- **Calendar Export**: iCal/Google Calendar integration
+- **Email Notifications**: Automated participant notifications
+- **QR Code Generation**: Quick access codes for session information
+- **Mobile App**: Companion mobile application for participants
 
-### Key Algorithms
-- **Session Calculation**: `paperSessions = ceil(totalPapers / papersPerSession)`
-- **Room Requirements**: 
-  - Standard: `minRooms = ceil(totalSessions / totalTimeSlots)`
-  - Custom Daily Config: `minRooms = max(concurrentSessionsPerDay across all days)`
-- **Feasibility Check**: `totalSessions <= totalSessionCapacity`
-- **Utilization Rate**: `(totalSessions / totalSessionCapacity) × 100`
+## 🎯 Recommended Next Steps for Development
 
-### Files Structure
-```
-/
-├── index.html              # Main application interface
-├── js/
-│   └── calculator.js       # Core calculation logic and UI management
-└── README.md              # Project documentation
-```
+### Priority 1: User Experience Enhancements ✅ COMPLETED
+1. **Round Table Selection System** ✅
+   - ✅ Implemented click-to-select modal system
+   - ✅ Shows available time slots with capacity information
+   - ✅ Dual-direction selection (click round table OR click time slot)
+   - ✅ Eliminated long-distance dragging requirement
 
-## 📊 Calculation Logic
+2. **Round Table Customization** ✅
+   - ✅ Custom round table naming system
+   - ✅ Participant management (up to 7 participants per table)
+   - ✅ Full name and school/institution tracking
+   - ✅ Modal-based editing interface with conditional field display
+   - ✅ Data persistence and session state management
 
-### Session Requirements
-1. **Paper Sessions**: Total papers ÷ Papers per session (rounded up)
-2. **Round Table Sessions**: Number of tables × Sessions per table
-3. **Total Sessions**: Paper sessions + Round table sessions
+3. **Mixed Session Positioning** ✅
+   - ✅ Position-specific session assignment within time slots
+   - ✅ Support for mixed round table and paper sessions in same time slot
+   - ✅ Individual position control (Position 1, 2, 3, etc.)
+   - ✅ Interactive modal system for session type selection
+   - ✅ Flexible assignment of any session type to any available position
 
-### Room Analysis
-1. **Total Time Slots**: Convention days × Time slots per day
-2. **Total Room Slots**: Total time slots × Available rooms
-3. **Minimum Rooms**: Total sessions ÷ Total time slots (rounded up)
-4. **Feasibility**: Total sessions ≤ Total room slots
+3. **Enhanced Visual Feedback**
+   - Improve drag-and-drop visual indicators for paper assignments
+   - Add animation for successful drops
+   - Implement color-coded status indicators
 
-### Utilization Metrics
-- **Overall Utilization**: (Total sessions ÷ Total room slots) × 100%
-- **Daily Utilization**: Sessions per day ÷ (Time slots × Available rooms) × 100%
-- **Room Distribution**: Sessions distributed evenly across days when possible
+### Priority 2: Advanced Scheduling Features
+1. **Conflict Detection System**
+   - Real-time conflict detection during manual placement
+   - Visual indicators for potential conflicts
+   - Automated conflict resolution suggestions
 
-## 🎨 Features Not Yet Implemented
+2. **Smart Auto-placement**
+   - Algorithm to suggest optimal round table placement
+   - Category-based placement suggestions
+   - Load balancing across time slots
 
-### Potential Enhancements
-- **Session Type Priorities**: Different scheduling priorities for papers vs. round tables
-- **Room Capacity Management**: Consider room sizes and audience capacity
-- **Time Slot Customization**: Variable duration slots and break periods
-- **Conflict Resolution**: Handle presenter availability and scheduling conflicts
-- **Export Functionality**: Generate PDF schedules and reports
-- **Session Categories**: Track different academic tracks or themes
-- **Equipment Requirements**: Room setup and technical needs tracking
-- **Historical Data**: Save and compare different convention scenarios
+### Priority 3: Data Management
+1. **Advanced Import/Export**
+   - Support for multiple file formats (Excel, JSON)
+   - Template generation for data entry
+   - Batch operations for large datasets
 
-### Advanced Features
-- **Room Capacity Management**: Consider different room sizes and capacities
-- **Multi-venue Support**: Handle sessions across multiple locations
-- **Presenter Management**: Track individual presenter schedules
-- **Attendance Forecasting**: Predict room capacity needs
-- **Budget Integration**: Cost calculation for room usage
-- **Advanced Export Options**: Excel, CSV, and calendar integration
+2. **Backup and Versioning**
+   - Configuration version history
+   - Automatic backup system
+   - Data recovery mechanisms
 
-## 🌐 Production Deployment
+## 🏗️ Project Architecture
 
-### **Live Database & Domain Setup**
+### Frontend Technologies
+- **HTML5 + CSS3**: Modern web standards with responsive design
+- **Tailwind CSS**: Utility-first CSS framework via CDN
+- **Vanilla JavaScript**: ES6+ features for interactivity
+- **Chart.js**: Data visualization for utilization charts
+- **jsPDF**: Client-side PDF generation
 
-This application now supports **Supabase + Vercel** deployment for production use with persistent data storage.
+### Data Storage
+- **Supabase**: Backend-as-a-Service for data persistence
+- **Local Storage**: Browser-based temporary storage
+- **CSV Import/Export**: Standard data exchange format
 
-#### **Quick Deploy**
-1. **Database**: Set up free Supabase project (2 minutes)
-2. **Hosting**: Deploy to Vercel with custom domain (5 minutes)
-3. **Total Cost**: ~$10-15/year for domain (database & hosting free)
+### Key JavaScript Classes and Functions
+- **`ConventionRoomCalculator`**: Main application class
+- **`generateSessionBreakdown()`**: Core scheduling logic
+- **`attachRoundTableDragListeners()`**: Drag-and-drop functionality
+- **`generateUnassignedRoundTablesSection()`**: Round table pool management
 
-#### **Features with Database**
-- ✅ **Persistent Data**: All conventions, papers, and assignments saved
-- ✅ **Multi-User Ready**: Support multiple conventions simultaneously
-- ✅ **Real-time Sync**: Data syncs across sessions and devices
-- ✅ **Professional URLs**: Custom domain with SSL certificate
-- ✅ **Scalable Architecture**: Handles growing usage automatically
+## 🌐 Public URLs
 
-#### **Deployment Guide**
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete step-by-step instructions.
+### Production Environment
+- **Main Application**: `[To be deployed via Publish tab]`
+- **API Endpoints**: `[Supabase endpoints - configured via environment]`
 
-## 🚀 Future Enhancements
+### Development Environment
+- **Local Development**: `file://[project-path]/index.html`
+- **Live Preview**: Available through development server
 
-### Phase 1: Multi-User Features
-1. **User Authentication**: Individual user accounts and permissions
-2. **Team Collaboration**: Multiple organizers per convention
-3. **Access Control**: Public/private convention settings
+## 💾 Data Models and Storage Services
 
-### Phase 2: Advanced Features
-4. **Email Integration**: Automated notifications to moderators/chairs
-5. **Calendar Export**: iCal/Google Calendar integration
-6. **Advanced Analytics**: Usage statistics and optimization insights
+### Supabase Tables
+- **`conventions`**: Main convention configuration data
+- **`papers`**: Individual paper details and metadata
+- **`sessions`**: Custom session configurations and assignments
+- **`room_names`**: Custom room naming mappings
+- **`moderators`**: Moderator contact information and profiles
+- **`chairs`**: Session chair details and affiliations
 
-### Phase 3: Enterprise Features
-7. **API Access**: REST API for external integrations
-8. **Bulk Operations**: CSV import/export for large datasets
-9. **Custom Branding**: White-label solutions for institutions
+### Local Storage Models
+- **Session State**: `roundTableAssignments`, `customSessions`, `paperAssignments`
+- **UI Preferences**: Custom labels, time slots, categories
+- **Temporary Data**: Form state, calculation results, user interactions
 
-## 🎯 Usage Examples
+### Data Relationships
+- Papers → Sessions (many-to-one assignment)
+- Round Tables → Time Slots (manual assignment)
+- Sessions → Rooms (automatic + manual assignment)
+- Categories → Papers (organizational grouping)
 
-### Small Conference (Default)
-- **60 papers** over **3 days** with **4 time slots/day**
-- **3 sessions per time slot**, **4 papers per session**
-- **12 round tables**, **1 session each**
-- **Result**: Feasible with balanced distribution
+## 🚀 Getting Started
 
-### Large Convention
-- **200 papers** over **5 days** with **6 time slots/day**
-- **5 sessions per time slot**, **5 papers per session**
-- **30 round tables**, **2 sessions each**
-- **Result**: Requires careful room management but feasible
+1. **Open the Application**: Navigate to `index.html` in a web browser
+2. **Configure Basic Settings**: Set convention days, time slots, and available rooms
+3. **Add Papers**: Use the "Manage Papers" button to add individual papers or import from CSV
+4. **Set Up Round Tables**: Configure the number of round tables needed
+5. **Calculate Schedule**: The system automatically generates the initial schedule
+6. **Manual Placement**: Click on empty position slots to choose session type (round table or paper), then select specific options. Mixed scheduling allows any combination within time slots
+7. **Customize Sessions**: Click on any session to edit details, assign moderators, or add notes
+8. **Export Results**: Generate PDF schedules or export data for external use
 
-## 📋 Complete Convention Planning Workflow
+## 🔧 Technical Requirements
 
-### Step-by-Step Process
-1. **Configure Convention**: Set basic days, time slots, and available rooms
-2. **Customize Daily Configuration** (Optional): Use "Configure" button to set per-day time slots, room availability, and session capacity
-3. **Customize Room Names**: Use "Manage Rooms" to replace generic room numbers with actual venue names
-4. **Customize Labels** (Optional): Use "Customize Labels" and "Customize Names" to replace generic time slot and session names with meaningful titles
-5. **Build Leadership Database**: Use "Manage Moderators" and "Manage Chairs" to create rosters of potential session leadership
-6. **Add Papers**: Use "Manage Papers" to add individual paper details
-7. **Calculate Schedule**: Generate the basic session structure based on daily configurations
-8. **Assign Papers**: Use "Assign Papers to Sessions" for detailed assignment
-9. **Assign Leadership**: Click individual sessions to select moderators and chairs from dropdowns or enter custom ones
-10. **Review Schedule**: View assigned papers, leadership, and room assignments in the detailed breakdown with custom names
-11. **Export Results**: Generate comprehensive PDF with all assignments, leadership, custom room names, custom time slot labels, and session names
+- **Modern Web Browser**: Chrome, Firefox, Safari, or Edge (ES6+ support required)
+- **Internet Connection**: Required for Tailwind CSS CDN and Supabase integration
+- **JavaScript Enabled**: Full functionality requires JavaScript
 
-### Assignment Features
-- **Drag-and-Drop Interface**: Intuitive paper assignment to sessions
-- **Category Filtering**: Filter papers by English literature categories
-- **Real-time Validation**: Prevent over-assignment beyond session capacity
-- **Visual Feedback**: See paper counts and assignments immediately
-- **Schedule Integration**: Assigned papers appear in the detailed schedule breakdown
+## 📝 Notes
 
-### Session Customization Features
-- **Editable Sessions**: Click any session in the schedule to customize details
-- **Leadership Assignment**: Select moderators and chairs from pre-built databases or enter custom ones
-- **Room Preferences**: Override automatic room assignments with specific venues
-- **Category Management**: Customize session categories and academic tracks
-- **Special Notes**: Add equipment needs, special requirements, or other details
-- **Paper Count Adjustment**: Modify number of papers per session as needed
+- **Reserved Slots**: The system automatically reserves at least one slot per time slot for round table placement when round tables exist and multiple sessions per slot are configured
+- **Data Persistence**: All configuration data is automatically saved to Supabase when available
+- **Mobile Responsive**: Interface adapts to different screen sizes for tablet and mobile use
+- **Real-time Validation**: Form inputs are validated in real-time with immediate feedback
 
-### Database Management Features
-- **Moderator Database**: Store potential moderators with names, institutions, emails, and bios
-- **Chair Database**: Maintain session chairs with complete contact and background information
-- **Reusable Assignments**: Pre-define leadership for quick assignment across multiple sessions
-- **Contact Management**: Store email addresses and biographical details for comprehensive records
-- **Easy Maintenance**: Add, edit, and delete entries through user-friendly interfaces
-- **Smart Integration**: Automatic population of session assignments from database selections
-
-## 📄 PDF Export Features
-
-The calculator now includes comprehensive PDF export functionality:
-
-### PDF Contents
-- **Convention Overview**: Days, time slots, room count, utilization
-- **Complete Schedule**: Day-by-day breakdown with custom time slot labels and session names
-- **Session Details**: Paper sessions with custom names, categories, paper counts, and room assignments
-- **Leadership Information**: Moderators and chairs with institutional affiliations
-- **Custom Room Names**: Actual venue names instead of generic room numbers
-- **Custom Time Slots**: Meaningful time slot names like "Opening Keynote" instead of "Time Slot A"
-- **Custom Session Names**: Descriptive session titles like "Medieval Poetry Panel" instead of "Paper Session 1"
-- **Organized Layout**: Clear hierarchy with proper spacing and line breaks
-- **Professional Formatting**: Multi-page layout with automatic page breaks
-
-### Enhanced Formatting
-- **Category Display**: Session categories prominently displayed for each paper session
-- **Leadership Section**: Dedicated sections for moderators and chairs with school affiliations
-- **Clear Hierarchy**: Indented structure for easy reading and reference
-- **No Overlapping**: Proper line spacing prevents text overlap and ensures readability
-- **Multi-page Support**: Automatic page breaks when content exceeds page limits
-
-### Export Options
-- **Automatic Filename**: Includes convention duration and generation date
-- **Complete Documentation**: Ready for distribution to organizers and participants
-- **Print-Ready Format**: Professional layout suitable for conference programs
-
-## 📈 Performance Metrics
-
-- **Real-time Calculation**: Instant results on input change
-- **Responsive Design**: Optimized for all device sizes
-- **Accessibility**: WCAG compliant interface elements
-- **Browser Support**: Modern browsers with ES6+ support
-
-## 🚀 Quick Start
-
-### **Local Development**
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/convention-room-calculator.git
-cd convention-room-calculator
-
-# Install dependencies
-npm install
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your Supabase credentials
-
-# Start development server
-npm run dev
-```
-
-### **Production Deployment**
-```bash
-# Follow the deployment guide
-open DEPLOYMENT.md
-
-# Or run the setup script
-node setup.js
-```
-
----
-
-**Built for academic conference organizers** | **Production-ready with Supabase + Vercel** | **Open for enhancements and customization**
+This project provides a comprehensive solution for academic conference planning with particular strength in manual session scheduling and round table management.
