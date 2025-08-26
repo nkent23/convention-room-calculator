@@ -353,6 +353,48 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Time Slot Names Section -->
+                            <div class="mt-4 p-4 bg-cyan-50 rounded-lg border border-cyan-200">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="font-semibold text-cyan-800">
+                                        <i class="fas fa-tag text-cyan-600 mr-2"></i>
+                                        Time Slot Labels (Optional)
+                                    </h4>
+                                    <button type="button" id="manageTimeSlotLabelsBtn" class="text-sm bg-cyan-600 text-white px-3 py-1 rounded-md hover:bg-cyan-700">
+                                        Customize Labels
+                                    </button>
+                                </div>
+                                <p class="text-sm text-cyan-700 mb-2">
+                                    Customize time slot names instead of generic "A", "B", "C", etc.
+                                </p>
+                                <div id="timeSlotLabelsPreview" class="text-xs text-cyan-600">
+                                    <div id="timeSlotLabelsSummary">
+                                        Using default slot labels (A, B, C, etc.)
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Session Names Section -->
+                            <div class="mt-4 p-4 bg-rose-50 rounded-lg border border-rose-200">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="font-semibold text-rose-800">
+                                        <i class="fas fa-edit text-rose-600 mr-2"></i>
+                                        Session Names (Optional)
+                                    </h4>
+                                    <button type="button" id="manageSessionLabelsBtn" class="text-sm bg-rose-600 text-white px-3 py-1 rounded-md hover:bg-rose-700">
+                                        Customize Names
+                                    </button>
+                                </div>
+                                <p class="text-sm text-rose-700 mb-2">
+                                    Customize session names instead of generic "Session 1", "Session 2", etc.
+                                </p>
+                                <div id="sessionLabelsPreview" class="text-xs text-rose-600">
+                                    <div id="sessionLabelsSummary">
+                                        Using default session numbering (Session 1, Session 2, etc.)
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Round Tables -->
@@ -1220,6 +1262,139 @@
                     <button id="applyCustomTimeSlots" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium">
                         <i class="fas fa-check mr-2"></i>
                         Apply Configuration
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time Slot Labels Management Modal -->
+    <div id="timeSlotLabelsModal" class="fixed inset-0 z-50 hidden modal-overlay">
+        <div class="flex items-center justify-center min-h-screen px-4 py-8">
+            <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            <i class="fas fa-tag text-cyan-600 mr-2"></i>
+                            Customize Time Slot Labels
+                        </h3>
+                        <button id="closeTimeSlotLabelsModal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 flex-1 overflow-y-auto">
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-4">
+                            Customize the labels for your time slots. Instead of generic "A", "B", "C", you can use meaningful names like "Opening Keynote", "Morning Session", "Lunch Break", etc.
+                        </p>
+                        
+                        <div id="timeSlotLabelsContainer" class="space-y-6">
+                            <!-- Time slot label inputs will be generated here -->
+                        </div>
+                        
+                        <div class="mt-4 p-4 bg-cyan-50 border border-cyan-200 rounded-lg">
+                            <div class="flex items-start">
+                                <i class="fas fa-lightbulb text-cyan-600 mt-1 mr-2"></i>
+                                <div class="text-sm text-cyan-800">
+                                    <strong>Naming Examples:</strong>
+                                    <ul class="mt-1 list-disc list-inside space-y-1">
+                                        <li><strong>Day 1:</strong> "Opening Keynote", "Welcome Reception"</li>
+                                        <li><strong>Day 2:</strong> "Morning Session", "Pre-Lunch Session", "Afternoon Session", "Evening Panel"</li>
+                                        <li><strong>Day 3:</strong> "Final Morning", "Closing Ceremony"</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-2">
+                    <button id="resetTimeSlotLabels" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
+                        Reset to Default
+                    </button>
+                    <button id="cancelTimeSlotLabels" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
+                        Cancel
+                    </button>
+                    <button id="saveTimeSlotLabels" class="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 font-medium">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Labels
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session Labels Management Modal -->
+    <div id="sessionLabelsModal" class="fixed inset-0 z-50 hidden modal-overlay">
+        <div class="flex items-center justify-center min-h-screen px-4 py-8">
+            <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            <i class="fas fa-edit text-rose-600 mr-2"></i>
+                            Customize Session Names
+                        </h3>
+                        <button id="closeSessionLabelsModal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 flex-1 overflow-y-auto">
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-4">
+                            Customize the names for your sessions. Instead of generic "Session 1", "Session 2", you can use descriptive names like "Medieval Poetry Panel", "Contemporary Literature Showcase", etc.
+                        </p>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-medium text-gray-800 mb-3">
+                                    <i class="fas fa-file-alt text-green-600 mr-2"></i>
+                                    Paper Sessions
+                                </h4>
+                                <div id="paperSessionLabelsContainer" class="space-y-3">
+                                    <!-- Paper session label inputs will be generated here -->
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 class="font-medium text-gray-800 mb-3">
+                                    <i class="fas fa-users text-purple-600 mr-2"></i>
+                                    Round Table Sessions
+                                </h4>
+                                <div id="roundTableLabelsContainer" class="space-y-3">
+                                    <!-- Round table label inputs will be generated here -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 p-4 bg-rose-50 border border-rose-200 rounded-lg">
+                            <div class="flex items-start">
+                                <i class="fas fa-lightbulb text-rose-600 mt-1 mr-2"></i>
+                                <div class="text-sm text-rose-800">
+                                    <strong>Naming Examples:</strong>
+                                    <ul class="mt-1 list-disc list-inside space-y-1">
+                                        <li><strong>Paper Sessions:</strong> "Medieval Literature Panel", "Contemporary Voices", "Poetry Analysis Workshop"</li>
+                                        <li><strong>Round Tables:</strong> "Graduate Student Showcase", "Faculty Discussion Forum", "International Perspectives"</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-2">
+                    <button id="resetSessionLabels" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
+                        Reset to Default
+                    </button>
+                    <button id="cancelSessionLabels" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
+                        Cancel
+                    </button>
+                    <button id="saveSessionLabels" class="px-4 py-2 bg-rose-600 text-white rounded-md hover:bg-rose-700 font-medium">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Names
                     </button>
                 </div>
             </div>
