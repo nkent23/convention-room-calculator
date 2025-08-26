@@ -348,18 +348,20 @@ class SupabaseConfig {
 
     // Convention Management Methods
     async saveNamedConvention(conventionData) {
+        const conventionId = this.generateUUID();
         const { data, error } = await this.supabase
             .from('conventions')
             .upsert([{
-                id: this.generateUUID(),
+                id: conventionId,
                 ...conventionData
-            }]);
+            }])
+            .select();
         
         if (error) {
             console.error('Error saving named convention:', error);
             throw error;
         }
-        return data;
+        return conventionId;
     }
 
     async loadAllConventions() {
@@ -415,6 +417,19 @@ class SupabaseConfig {
             console.error('Error deleting convention:', error);
             throw error;
         }
+    }
+
+    async updateCurrentConvention(updateData) {
+        const { data, error } = await this.supabase
+            .from('conventions')
+            .update(updateData)
+            .eq('id', this.currentConventionId);
+        
+        if (error) {
+            console.error('Error updating current convention:', error);
+            throw error;
+        }
+        return data;
     }
 }
 
