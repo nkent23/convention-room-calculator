@@ -233,67 +233,94 @@ class ConventionRoomCalculator {
     calculateRequirements() {
         const data = this.getFormData();
         
-        // Calculate paper sessions using category-based distribution
-        const sessionDistribution = this.generateCategoryBasedSessions();
-        const paperSessions = sessionDistribution.sessions.length;
-        const roundTableSessions = data.totalRoundTables * data.roundTableDuration;
-        const totalSessions = paperSessions + roundTableSessions;
+        // STEP 1: Calculate basic parameters
+        const conventionDays = data.conventionDays;
+        const timeSlotsPerDay = data.timeSlotsPerDay;
+        const totalTimeSlots = conventionDays * timeSlotsPerDay;
+        const sessionsPerTimeSlot = data.sessionsPerTimeSlot;
+        const availableRooms = data.availableRooms;
         
-        // Calculate total capacity using per-day configurations
-        let totalSessionCapacity = 0;
-        let totalRoomSlots = 0;
-        let minRoomsNeeded = 0;
+        // STEP 2: Calculate session capacity
+        const totalSessionCapacity = totalTimeSlots * sessionsPerTimeSlot;
         
-        if (data.hasCustomDailyConfig) {
-            // Use per-day configurations
-            for (let day = 1; day <= data.conventionDays; day++) {
-                const dayIndex = day - 1;
-                const slots = data.timeSlotsPerDayArray[dayIndex];
-                const rooms = data.roomsPerDayArray[dayIndex];
-                const sessionsPerSlot = data.sessionsPerSlotPerDayArray[dayIndex];
+        // STEP 3: Calculate paper sessions
+        // Use simple calculation first, then use category-based if categories exist
+        let paperSessions = 0;
+        let sessionDistribution = { sessions: [], totalPapers: data.totalPapers };
+        
+        if (data.totalPapers > 0) {
+            // Try category-based distribution first
+            sessionDistribution = this.generateCategoryBasedSessions();
+            paperSessions = sessionDistribution.sessions.length;
+            
+            // If category-based didn't work or produced too many sessions, use simple calculation
+            if (paperSessions === 0 || paperSessions > totalSessionCapacity) {
+                const papersPerSession = Math.max(1, data.papersPerSession || 4);
+                paperSessions = Math.ceil(data.totalPapers / papersPerSession);
                 
-                totalSessionCapacity += slots * sessionsPerSlot;
-                totalRoomSlots += slots * rooms;
+                // Create simple session distribution
+                sessionDistribution = {
+                    sessions: [],
+                    totalPapers: data.totalPapers
+                };
                 
-                // Calculate minimum rooms needed per day based on concurrent sessions
-                const maxConcurrentSessions = sessionsPerSlot;
-                const roomsNeededThisDay = Math.min(rooms, maxConcurrentSessions);
-                minRoomsNeeded = Math.max(minRoomsNeeded, roomsNeededThisDay);
+                for (let i = 1; i <= paperSessions; i++) {
+                    const remainingPapers = data.totalPapers - ((i - 1) * papersPerSession);
+                    const papersInSession = Math.min(papersPerSession, remainingPapers);
+                    
+                    sessionDistribution.sessions.push({
+                        id: i,
+                        paperCount: papersInSession,
+                        title: `Paper Session ${i} (${papersInSession} papers)`,
+                        type: 'paper',
+                        category: 'standard'
+                    });
+                }
             }
-        } else {
-            // Use standard calculations
-            const totalTimeSlots = data.totalTimeSlots;
-            totalRoomSlots = totalTimeSlots * data.availableRooms;
-            totalSessionCapacity = totalTimeSlots * data.sessionsPerTimeSlot;
-            // Fix: Minimum rooms needed should be based on concurrent sessions, not total sessions
-            minRoomsNeeded = data.sessionsPerTimeSlot; // Each time slot needs this many concurrent rooms
         }
         
-        // Calculate if it's feasible
-        const isFeasible = totalSessions <= totalSessionCapacity;
-        const utilizationRate = (totalSessions / totalSessionCapacity * 100).toFixed(1);
+        // STEP 4: Calculate round table sessions
+        const roundTableSessions = data.totalRoundTables; // Each round table = 1 session
         
-        // Calculate approximate sessions per day (for backward compatibility)
-        const sessionsPerDay = Math.ceil(totalSessions / data.conventionDays);
-        const roomsUsedPerDay = data.hasCustomDailyConfig ? 
-            Math.max(...data.roomsPerDayArray) : 
-            Math.ceil(sessionsPerDay / data.timeSlotsPerDay);
+        // STEP 5: Calculate total sessions
+        const totalSessions = paperSessions + roundTableSessions;
         
+        // STEP 6: Calculate room requirements
+        const minRoomsNeeded = sessionsPerTimeSlot; // Need this many concurrent rooms
+        
+        // STEP 7: Calculate feasibility
+        const hasEnoughCapacity = totalSessions <= totalSessionCapacity;
+        const hasEnoughRooms = minRoomsNeeded <= availableRooms;
+        const isFeasible = hasEnoughCapacity && hasEnoughRooms;
+        
+        // STEP 8: Calculate utilization
+        const utilizationRate = totalSessionCapacity > 0 ? 
+            ((totalSessions / totalSessionCapacity) * 100).toFixed(1) : 
+            '0.0';
+        
+        // STEP 9: Calculate other metrics
+        const sessionsPerDay = Math.ceil(totalSessions / conventionDays);
+        const roomsUsedPerDay = Math.min(availableRooms, Math.ceil(sessionsPerDay / timeSlotsPerDay));
+        const totalRoomSlots = totalTimeSlots * availableRooms;
+        
+        // STEP 10: Build results object
         const results = {
             ...data,
             sessionDistribution,
             paperSessions,
             roundTableSessions,
             totalSessions,
-            totalSessionCapacity, // New: total session capacity across all days
+            totalSessionCapacity,
             totalRoomSlots,
             minRoomsNeeded,
             isFeasible,
+            hasEnoughCapacity,
+            hasEnoughRooms,
             utilizationRate,
             sessionsPerDay,
             roomsUsedPerDay,
-            excessRooms: data.availableRooms - minRoomsNeeded,
-            sessionsPerSlot: Math.ceil(totalSessions / data.totalTimeSlots)
+            excessRooms: availableRooms - minRoomsNeeded,
+            sessionsPerSlot: totalSessions > 0 ? Math.ceil(totalSessions / totalTimeSlots) : 0
         };
 
         this.currentResults = results;
@@ -311,97 +338,29 @@ class ConventionRoomCalculator {
         }
 
         const sessions = [];
-        let sessionId = 1;
-
-        // Ensure min/max are properly ordered
-        const minPapers = Math.min(data.minPapersPerSession, data.maxPapersPerSession);
-        const maxPapers = Math.max(data.minPapersPerSession, data.maxPapersPerSession);
-        const standardPapers = Math.max(minPapers, Math.min(maxPapers, data.papersPerSession));
+        const papersPerSession = Math.max(1, data.papersPerSession || 4);
+        const totalSessions = Math.ceil(data.totalPapers / papersPerSession);
         
-        // Calculate desired number of sessions based on "Sessions per Time Slot"
-        const totalTimeSlots = data.conventionDays * data.timeSlotsPerDay;
-        const maxPossibleSessions = totalTimeSlots * data.sessionsPerTimeSlot;
-        
-        // Try to create enough sessions to utilize the "Sessions per Time Slot" setting
-        // but don't go below 1 paper per session or above maxPossibleSessions
-        const idealSessionCount = Math.min(maxPossibleSessions, data.totalPapers);
-        const targetSessionCount = idealSessionCount > 0 ? idealSessionCount : Math.ceil(data.totalPapers / standardPapers);
-        
-        // If we can distribute papers across the target number of sessions
-        if (targetSessionCount > 0 && data.totalPapers >= targetSessionCount) {
-            // Distribute papers as evenly as possible across target sessions
-            const basePapersPerSession = Math.floor(data.totalPapers / targetSessionCount);
-            const extraPapers = data.totalPapers % targetSessionCount;
-            
-            for (let i = 0; i < targetSessionCount; i++) {
-                const papersInThisSession = basePapersPerSession + (i < extraPapers ? 1 : 0);
-                
-                sessions.push({
-                    id: sessionId++,
-                    paperCount: papersInThisSession,
-                    title: `Paper Session ${sessionId - 1} (${papersInThisSession} papers)`,
-                    type: 'paper',
-                    category: this.categorizeSession(papersInThisSession, minPapers, maxPapers, standardPapers)
-                });
-            }
-            
-            return {
-                sessions: sessions,
-                totalPapers: data.totalPapers,
-                sessionStats: this.calculateSessionStats(sessions, minPapers, maxPapers, standardPapers)
-            };
-        }
-        
-        // Fallback to original algorithm if target distribution doesn't work
         let remainingPapers = data.totalPapers;
-
-        while (remainingPapers > 0) {
-            let papersInThisSession;
-
-            if (remainingPapers <= maxPapers) {
-                // Last session - use all remaining papers if within bounds
-                if (remainingPapers >= minPapers) {
-                    papersInThisSession = remainingPapers;
-                } else {
-                    // Too few papers for minimum - combine with previous session if possible
-                    if (sessions.length > 0 && sessions[sessions.length - 1].paperCount + remainingPapers <= maxPapers) {
-                        sessions[sessions.length - 1].paperCount += remainingPapers;
-                        sessions[sessions.length - 1].title = `Paper Session ${sessions[sessions.length - 1].id} (${sessions[sessions.length - 1].paperCount} papers)`;
-                        break;
-                    } else {
-                        papersInThisSession = remainingPapers;
-                    }
-                }
-            } else {
-                // Calculate optimal session size based on remaining papers
-                const estimatedSessionsLeft = Math.ceil(remainingPapers / standardPapers);
-                const optimalSize = Math.ceil(remainingPapers / estimatedSessionsLeft);
-                
-                // Keep within bounds
-                papersInThisSession = Math.max(minPapers, Math.min(maxPapers, optimalSize));
-                
-                // Adjust if this would leave too few papers for the next session
-                if (remainingPapers - papersInThisSession > 0 && remainingPapers - papersInThisSession < minPapers) {
-                    papersInThisSession = Math.max(minPapers, remainingPapers - minPapers);
-                }
-            }
-
+        
+        for (let i = 1; i <= totalSessions; i++) {
+            const papersInThisSession = Math.min(papersPerSession, remainingPapers);
+            
             sessions.push({
-                id: sessionId,
+                id: i,
                 paperCount: papersInThisSession,
-                title: `Paper Session ${sessionId} (${papersInThisSession} papers)`,
+                title: `Paper Session ${i} (${papersInThisSession} papers)`,
                 type: 'paper',
-                category: this.categorizeSession(papersInThisSession, minPapers, maxPapers, standardPapers)
+                category: 'standard'
             });
-
+            
             remainingPapers -= papersInThisSession;
-            sessionId++;
         }
 
         return {
             sessions: sessions,
             totalPapers: data.totalPapers,
-            sessionStats: this.calculateSessionStats(sessions, minPapers, maxPapers, standardPapers)
+            sessionStats: { totalSessions: sessions.length }
         };
     }
 
