@@ -420,10 +420,14 @@ class SupabaseConfig {
     }
 
     async updateCurrentConvention(updateData) {
+        // Use upsert to handle both update and insert cases
         const { data, error } = await this.supabase
             .from('conventions')
-            .update(updateData)
-            .eq('id', this.currentConventionId);
+            .upsert([{
+                id: this.currentConventionId,
+                ...updateData
+            }])
+            .select();
         
         if (error) {
             console.error('Error updating current convention:', error);
