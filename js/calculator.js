@@ -1001,14 +1001,28 @@ class ConventionRoomCalculator {
     }
 
     attachRoundTableDragListeners() {
-        // Handle click on round tables to open placement modal
-        document.addEventListener('click', (e) => {
+        // Remove any existing listeners to prevent duplicates
+        document.removeEventListener('click', this.handleRoundTableClick);
+        
+        // Create a bound version of the handler to enable removal
+        this.handleRoundTableClick = (e) => {
             if (e.target.closest('.round-table-clickable')) {
                 const roundTableCard = e.target.closest('.round-table-clickable');
                 const roundTableId = parseInt(roundTableCard.dataset.roundTableId);
-                this.openRoundTablePlacementModal(roundTableId);
+                
+                // Check if this is an unassigned round table
+                if (!this.roundTableAssignments.has(roundTableId)) {
+                    // For unassigned round tables, open the placement modal to choose position
+                    this.openRoundTablePlacementModal(roundTableId);
+                } else {
+                    // For assigned round tables, allow editing
+                    this.openRoundTablePlacementModal(roundTableId);
+                }
             }
-        });
+        };
+        
+        // Handle click on round tables to open placement modal
+        document.addEventListener('click', this.handleRoundTableClick);
     }
 
     openRoundTablePlacementModal(roundTableId) {
@@ -1018,8 +1032,8 @@ class ConventionRoomCalculator {
         // Get round table title
         const roundTableTitle = this.getSessionLabel('round_table', roundTableId);
 
-        // Generate available time slots
-        let slotsHTML = '';
+        // Generate available positions
+        let positionsHTML = '';
         const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
         for (let day = 1; day <= results.conventionDays; day++) {
@@ -1029,62 +1043,76 @@ class ConventionRoomCalculator {
 
             for (let slot = 0; slot < timeSlotsThisDay; slot++) {
                 const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
-                const assignedRoundTables = this.getAssignedRoundTablesForSlot(day, slot);
-                
-                // Calculate how many paper sessions are in this slot
-                const reservedSlotsForRoundTables = (results.roundTableSessions > 0 && sessionsPerSlotThisDay > 1) ? 1 : 0;
-                const maxPaperSessionsInSlot = sessionsPerSlotThisDay - reservedSlotsForRoundTables;
-                const paperSessionsInSlot = Math.min(maxPaperSessionsInSlot, results.paperSessions);
-                
-                const totalSessionsInSlot = paperSessionsInSlot + assignedRoundTables.length;
-                const availableSlots = sessionsPerSlotThisDay - totalSessionsInSlot;
-                const isAvailable = availableSlots > 0;
-                
-                // Check if this round table is currently assigned here
-                const currentAssignment = this.roundTableAssignments.get(roundTableId);
-                const isCurrentlyHere = currentAssignment && currentAssignment.day === day && currentAssignment.slotIndex === slot;
-
                 const timeSlotDisplay = this.formatTimeSlot(day, slotLabel);
                 
-                slotsHTML += `
-                    <div class="flex items-center justify-between p-3 border rounded-lg ${isCurrentlyHere ? 'bg-purple-100 border-purple-300' : isAvailable ? 'bg-green-50 border-green-200 hover:bg-green-100 cursor-pointer' : 'bg-gray-100 border-gray-200 opacity-50'}"
-                         ${isAvailable ? `onclick="calculator.assignRoundTableToSlot(${roundTableId}, ${day}, ${slot})"` : ''}>
-                        <div class="flex-1">
-                            <div class="font-medium text-gray-900">
-                                ${timeSlotDisplay}
-                                ${isCurrentlyHere ? '<span class="ml-2 text-purple-600 font-semibold">(Currently Here)</span>' : ''}
+                // Show all positions within this time slot
+                for (let position = 0; position < sessionsPerSlotThisDay; position++) {
+                    const assignedRoundTable = this.getAssignedRoundTableForPosition(day, slot, position);
+                    const assignedPaper = this.getAssignedPaperForPosition(day, slot, position);
+                    const isOccupied = assignedRoundTable || assignedPaper;
+                    
+                    // Check if this round table is currently in this position
+                    const isCurrentPosition = assignedRoundTable === roundTableId;
+                    
+                    let statusText = '';
+                    let statusClass = '';
+                    let clickHandler = '';
+                    
+                    if (isCurrentPosition) {
+                        statusText = 'Currently Here';
+                        statusClass = 'bg-purple-100 border-purple-300';
+                    } else if (isOccupied) {
+                        if (assignedRoundTable) {
+                            statusText = `Occupied by Round Table ${assignedRoundTable}`;
+                        } else if (assignedPaper) {
+                            statusText = `Occupied by Paper Session ${assignedPaper.sessionNumber}`;
+                        }
+                        statusClass = 'bg-gray-100 border-gray-200 opacity-50';
+                    } else {
+                        statusText = 'Available';
+                        statusClass = 'bg-green-50 border-green-200 hover:bg-green-100 cursor-pointer';
+                        clickHandler = `onclick="calculator.assignRoundTableToPosition(${roundTableId}, ${day}, ${slot}, ${position})"`;
+                    }
+                    
+                    positionsHTML += `
+                        <div class="flex items-center justify-between p-3 border rounded-lg ${statusClass}" ${clickHandler}>
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900">
+                                    ${timeSlotDisplay} - Position ${position + 1}
+                                    ${isCurrentPosition ? '<span class="ml-2 text-purple-600 font-semibold">(Current)</span>' : ''}
+                                </div>
+                                <div class="text-sm text-gray-600">
+                                    Day ${day} • ${statusText}
+                                </div>
                             </div>
-                            <div class="text-sm text-gray-600">
-                                Day ${day} • ${sessionsPerSlotThisDay - availableSlots}/${sessionsPerSlotThisDay} sessions filled
+                            <div class="ml-4">
+                                ${isCurrentPosition ? 
+                                    '<i class="fas fa-check-circle text-purple-600"></i>' : 
+                                    !isOccupied ? 
+                                        '<i class="fas fa-plus-circle text-green-600"></i>' : 
+                                        '<i class="fas fa-times-circle text-gray-400"></i>'
+                                }
                             </div>
                         </div>
-                        <div class="ml-4">
-                            ${isCurrentlyHere ? 
-                                '<i class="fas fa-check-circle text-purple-600"></i>' : 
-                                isAvailable ? 
-                                    '<i class="fas fa-plus-circle text-green-600"></i>' : 
-                                    '<i class="fas fa-times-circle text-gray-400"></i>'
-                            }
-                        </div>
-                    </div>
-                `;
+                    `;
+                }
             }
         }
 
         // Show modal
         const modalHTML = `
             <div id="roundTablePlacementModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                <div class="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-hidden">
+                <div class="bg-white rounded-lg max-w-3xl w-full max-h-96 overflow-hidden">
                     <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-4">
                         <h3 class="text-lg font-semibold flex items-center">
                             <i class="fas fa-users mr-2"></i>
                             Place ${roundTableTitle}
                         </h3>
-                        <p class="text-sm text-purple-100 mt-1">Click on an available time slot to place this round table</p>
+                        <p class="text-sm text-purple-100 mt-1">Click on an available position to place this round table</p>
                     </div>
                     <div class="p-6 max-h-80 overflow-y-auto">
-                        <div class="space-y-3">
-                            ${slotsHTML}
+                        <div class="space-y-2">
+                            ${positionsHTML}
                         </div>
                     </div>
                     <div class="bg-gray-50 px-6 py-4 flex justify-between">
@@ -1113,42 +1141,37 @@ class ConventionRoomCalculator {
     }
 
     assignRoundTableToSlot(roundTableId, day, slot) {
+        // This function is kept for backward compatibility with old modal system
+        // but redirects to position-based assignment
+        
         const results = this.currentResults;
         if (!results) return;
 
         const dayIndex = day - 1;
         const sessionsPerSlotThisDay = results.sessionsPerSlotPerDayArray ? results.sessionsPerSlotPerDayArray[dayIndex] : results.sessionsPerTimeSlot;
         
-        // Check if there's space in this slot
-        const assignedRoundTables = this.getAssignedRoundTablesForSlot(day, slot);
-        const reservedSlotsForRoundTables = (results.roundTableSessions > 0 && sessionsPerSlotThisDay > 1) ? 1 : 0;
-        const maxPaperSessionsInSlot = sessionsPerSlotThisDay - reservedSlotsForRoundTables;
-        const totalSessionsInSlot = maxPaperSessionsInSlot + assignedRoundTables.length;
+        // Find first available position in this slot
+        let availablePosition = -1;
+        for (let position = 0; position < sessionsPerSlotThisDay; position++) {
+            const assignedRoundTable = this.getAssignedRoundTableForPosition(day, slot, position);
+            const assignedPaper = this.getAssignedPaperForPosition(day, slot, position);
+            
+            if (!assignedRoundTable && !assignedPaper) {
+                availablePosition = position;
+                break;
+            }
+        }
 
-        if (totalSessionsInSlot >= sessionsPerSlotThisDay) {
-            this.showNotification('This time slot is full. Cannot add more sessions.', 'error');
+        if (availablePosition === -1) {
+            this.showNotification('This time slot is full. No available positions.', 'error');
             return;
         }
 
-        // Remove from previous assignment
-        this.roundTableAssignments.delete(roundTableId);
+        // Use the position-based assignment
+        this.assignRoundTableToPosition(roundTableId, day, slot, availablePosition);
         
-        // Add to new assignment (find next available position)
-        const nextPosition = this.findNextAvailablePosition(day, slot, sessionsPerSlotThisDay);
-        this.roundTableAssignments.set(roundTableId, {
-            day: day,
-            slotIndex: slot,
-            position: nextPosition
-        });
-
-        // Close modal and refresh display
+        // Close the placement modal
         this.closeRoundTablePlacementModal();
-        this.generateDetailedBreakdown(this.currentResults);
-        
-        // Show success message
-        const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
-        const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
-        this.showNotification(`Round Table ${roundTableId} assigned to Day ${day}, Time Slot ${slotLabel}`, 'success');
     }
 
     unassignRoundTable(roundTableId) {
@@ -1180,8 +1203,9 @@ class ConventionRoomCalculator {
             position: position
         });
 
-        // Close modal and refresh display
+        // Close any open modals and refresh display
         this.closeRoundTableSelectionModal();
+        this.closeTimeSlotAssignmentModal();
         this.generateDetailedBreakdown(this.currentResults);
         
         // Show success message
@@ -1350,7 +1374,7 @@ class ConventionRoomCalculator {
             const roundTableTitle = this.getSessionLabel('round_table', roundTableId);
             tablesHTML += `
                 <div class="flex items-center justify-between p-3 border border-purple-200 rounded-lg bg-purple-50 hover:bg-purple-100 cursor-pointer transition-colors"
-                     onclick="calculator.assignRoundTableToSlot(${roundTableId}, ${day}, ${slot})">
+                     onclick="calculator.assignRoundTableToSlot(${roundTableId}, ${day}, ${slot})"
                     <div class="flex items-center">
                         <div class="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center mr-3">
                             <i class="fas fa-users text-sm"></i>
@@ -1419,7 +1443,7 @@ class ConventionRoomCalculator {
                                 <i class="fas fa-plus-circle text-blue-600 mr-2"></i>
                                 Assign Session
                             </h3>
-                            <p class="text-sm text-gray-600 mt-1">Choose what to assign to Day ${day}, ${this.formatTimeSlot(day, slot)}, Position ${position + 1}</p>
+                            <p class="text-sm text-gray-600 mt-1">Choose what to assign to Day ${day}, Time Slot ${slot + 1}, Position ${position + 1}</p>
                         </div>
                         <div class="px-6 py-4">
                             <div class="space-y-3">
@@ -1511,7 +1535,7 @@ class ConventionRoomCalculator {
                                 <i class="fas fa-users text-purple-600 mr-2"></i>
                                 Select Round Table
                             </h3>
-                            <p class="text-sm text-gray-600 mt-1">Day ${day}, ${this.formatTimeSlot(day, slot)}, Position ${position + 1}</p>
+                            <p class="text-sm text-gray-600 mt-1">Day ${day}, Time Slot ${slot + 1}, Position ${position + 1}</p>
                         </div>
                         <div class="px-6 py-4 max-h-96 overflow-y-auto">
                             <div class="space-y-2">
