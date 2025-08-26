@@ -682,7 +682,11 @@ class ConventionRoomCalculator {
                     const timeSlotKey = `day${day}_slot${slot}`;
                     
                     // Calculate how many paper sessions to place in this slot
-                    const paperSessionsNeeded = Math.min(sessionsPerSlotThisDay, remainingPaperSessions - (slot * sessionsPerSlotThisDay));
+                    // Reserve at least 1 slot for round tables if there are any round tables and more than 1 session per slot
+                    const reservedSlotsForRoundTables = (results.roundTableSessions > 0 && sessionsPerSlotThisDay > 1) ? 1 : 0;
+                    const maxPaperSessionsInSlot = sessionsPerSlotThisDay - reservedSlotsForRoundTables;
+                    
+                    const paperSessionsNeeded = Math.min(maxPaperSessionsInSlot, remainingPaperSessions - (slot * maxPaperSessionsInSlot));
                     const actualPaperSessions = Math.max(0, paperSessionsNeeded);
                     
                     breakdownHTML += `
@@ -756,10 +760,12 @@ class ConventionRoomCalculator {
                     const totalSessionsInSlot = actualPaperSessions + assignedRoundTables.length;
                     
                     if (totalSessionsInSlot < sessionsPerSlotThisDay) {
+                        const availableSlots = sessionsPerSlotThisDay - totalSessionsInSlot;
                         breakdownHTML += `
-                            <div class="drop-zone-placeholder text-center py-3 border-2 border-dashed border-gray-300 rounded-md text-gray-500 text-sm">
+                            <div class="drop-zone-placeholder text-center py-3 border-2 border-dashed border-purple-300 rounded-md text-purple-600 text-sm cursor-pointer hover:bg-purple-50 transition-colors" 
+                                 onclick="calculator.openTimeSlotAssignmentModal(${day}, ${slot})">
                                 <i class="fas fa-plus-circle text-lg mb-1"></i>
-                                <p>Drop round table here (${sessionsPerSlotThisDay - totalSessionsInSlot} slot${sessionsPerSlotThisDay - totalSessionsInSlot > 1 ? 's' : ''} available)</p>
+                                <p>Click to add round table (${availableSlots} slot${availableSlots > 1 ? 's' : ''} available)</p>
                             </div>
                         `;
                     }
@@ -885,7 +891,7 @@ class ConventionRoomCalculator {
                         <i class="fas fa-users mr-2"></i>
                         Unassigned Round Tables
                     </h4>
-                    <p class="text-sm text-purple-100 mt-1">Drag these round tables to any time slot above</p>
+                    <p class="text-sm text-purple-100 mt-1">Click on any round table to choose where to place it</p>
                 </div>
                 <div class="p-6">
                     <div class="grid gap-3 unassigned-round-tables">
@@ -915,8 +921,8 @@ class ConventionRoomCalculator {
                     <div class="mt-4 p-3 bg-purple-50 rounded-lg">
                         <p class="text-sm text-purple-700">
                             <i class="fas fa-info-circle mr-1"></i>
-                            <strong>How to assign:</strong> Drag any round table above to an available time slot. 
-                            Each time slot can hold up to the maximum concurrent sessions allowed.
+                            <strong>How to assign:</strong> Click on any round table above to choose which time slot to place it in. 
+                            You can also click on any available time slot to select from unassigned round tables.
                         </p>
                     </div>
                 </div>
@@ -927,80 +933,255 @@ class ConventionRoomCalculator {
     }
 
     attachRoundTableDragListeners() {
-        // Handle drag start for round tables
-        document.addEventListener('dragstart', (e) => {
-            if (e.target.classList.contains('round-table-draggable')) {
-                const roundTableId = e.target.dataset.roundTableId;
-                e.dataTransfer.setData('text/plain', roundTableId);
-                e.dataTransfer.effectAllowed = 'move';
-                e.target.style.opacity = '0.5';
+        // Handle click on round tables to open placement modal
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.round-table-clickable')) {
+                const roundTableCard = e.target.closest('.round-table-clickable');
+                const roundTableId = parseInt(roundTableCard.dataset.roundTableId);
+                this.openRoundTablePlacementModal(roundTableId);
             }
         });
+    }
 
-        // Handle drag end
-        document.addEventListener('dragend', (e) => {
-            if (e.target.classList.contains('round-table-draggable')) {
-                e.target.style.opacity = '1';
-            }
-        });
+    openRoundTablePlacementModal(roundTableId) {
+        const results = this.currentResults;
+        if (!results) return;
 
-        // Handle drag over for drop zones
-        document.addEventListener('dragover', (e) => {
-            const dropZone = e.target.closest('.session-drop-zone');
-            if (dropZone) {
-                e.preventDefault();
-                dropZone.classList.add('bg-purple-100', 'border-purple-300');
-            }
-        });
+        // Get round table title
+        const roundTableTitle = this.getSessionLabel('round_table', roundTableId);
 
-        // Handle drag leave
-        document.addEventListener('dragleave', (e) => {
-            const dropZone = e.target.closest('.session-drop-zone');
-            if (dropZone && !dropZone.contains(e.relatedTarget)) {
-                dropZone.classList.remove('bg-purple-100', 'border-purple-300');
-            }
-        });
+        // Generate available time slots
+        let slotsHTML = '';
+        const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
-        // Handle drop
-        document.addEventListener('drop', (e) => {
-            const dropZone = e.target.closest('.session-drop-zone');
-            if (dropZone) {
-                e.preventDefault();
-                dropZone.classList.remove('bg-purple-100', 'border-purple-300');
+        for (let day = 1; day <= results.conventionDays; day++) {
+            const dayIndex = day - 1;
+            const timeSlotsThisDay = results.timeSlotsPerDayArray ? results.timeSlotsPerDayArray[dayIndex] : results.timeSlotsPerDay;
+            const sessionsPerSlotThisDay = results.sessionsPerSlotPerDayArray ? results.sessionsPerSlotPerDayArray[dayIndex] : results.sessionsPerTimeSlot;
+
+            for (let slot = 0; slot < timeSlotsThisDay; slot++) {
+                const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
+                const assignedRoundTables = this.getAssignedRoundTablesForSlot(day, slot);
                 
-                const roundTableId = parseInt(e.dataTransfer.getData('text/plain'));
-                const timeSlotContainer = dropZone.closest('.time-slot-container');
+                // Calculate how many paper sessions are in this slot
+                const reservedSlotsForRoundTables = (results.roundTableSessions > 0 && sessionsPerSlotThisDay > 1) ? 1 : 0;
+                const maxPaperSessionsInSlot = sessionsPerSlotThisDay - reservedSlotsForRoundTables;
+                const paperSessionsInSlot = Math.min(maxPaperSessionsInSlot, results.paperSessions);
                 
-                if (timeSlotContainer && roundTableId) {
-                    const day = parseInt(timeSlotContainer.dataset.day);
-                    const slot = parseInt(timeSlotContainer.dataset.slot);
-                    const maxSessions = parseInt(dropZone.dataset.maxSessions);
-                    
-                    // Check if there's space in this slot
-                    const currentSessions = dropZone.querySelectorAll('.session-editable').length;
-                    const placeholder = dropZone.querySelector('.drop-zone-placeholder');
-                    
-                    if (currentSessions < maxSessions) {
-                        // Remove from previous assignment
-                        this.roundTableAssignments.delete(roundTableId);
-                        
-                        // Add to new assignment
-                        this.roundTableAssignments.set(roundTableId, {
-                            day: day,
-                            slotIndex: slot
-                        });
-                        
-                        // Refresh the display
-                        this.generateDetailedBreakdown(this.currentResults);
-                        
-                        // Show success message
-                        this.showNotification(`Round Table ${roundTableId} moved to Day ${day}, Time Slot ${String.fromCharCode(65 + slot)}`, 'success');
-                    } else {
-                        this.showNotification('This time slot is full. Cannot add more sessions.', 'error');
-                    }
-                }
+                const totalSessionsInSlot = paperSessionsInSlot + assignedRoundTables.length;
+                const availableSlots = sessionsPerSlotThisDay - totalSessionsInSlot;
+                const isAvailable = availableSlots > 0;
+                
+                // Check if this round table is currently assigned here
+                const currentAssignment = this.roundTableAssignments.get(roundTableId);
+                const isCurrentlyHere = currentAssignment && currentAssignment.day === day && currentAssignment.slotIndex === slot;
+
+                const timeSlotDisplay = this.formatTimeSlot(day, slotLabel);
+                
+                slotsHTML += `
+                    <div class="flex items-center justify-between p-3 border rounded-lg ${isCurrentlyHere ? 'bg-purple-100 border-purple-300' : isAvailable ? 'bg-green-50 border-green-200 hover:bg-green-100 cursor-pointer' : 'bg-gray-100 border-gray-200 opacity-50'}"
+                         ${isAvailable ? `onclick="calculator.assignRoundTableToSlot(${roundTableId}, ${day}, ${slot})"` : ''}>
+                        <div class="flex-1">
+                            <div class="font-medium text-gray-900">
+                                ${timeSlotDisplay}
+                                ${isCurrentlyHere ? '<span class="ml-2 text-purple-600 font-semibold">(Currently Here)</span>' : ''}
+                            </div>
+                            <div class="text-sm text-gray-600">
+                                Day ${day} • ${sessionsPerSlotThisDay - availableSlots}/${sessionsPerSlotThisDay} sessions filled
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            ${isCurrentlyHere ? 
+                                '<i class="fas fa-check-circle text-purple-600"></i>' : 
+                                isAvailable ? 
+                                    '<i class="fas fa-plus-circle text-green-600"></i>' : 
+                                    '<i class="fas fa-times-circle text-gray-400"></i>'
+                            }
+                        </div>
+                    </div>
+                `;
             }
+        }
+
+        // Show modal
+        const modalHTML = `
+            <div id="roundTablePlacementModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-hidden">
+                    <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-4">
+                        <h3 class="text-lg font-semibold flex items-center">
+                            <i class="fas fa-users mr-2"></i>
+                            Place ${roundTableTitle}
+                        </h3>
+                        <p class="text-sm text-purple-100 mt-1">Click on an available time slot to place this round table</p>
+                    </div>
+                    <div class="p-6 max-h-80 overflow-y-auto">
+                        <div class="space-y-3">
+                            ${slotsHTML}
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-6 py-4 flex justify-between">
+                        <button onclick="calculator.unassignRoundTable(${roundTableId})" 
+                                class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">
+                            <i class="fas fa-trash mr-2"></i>
+                            Remove Assignment
+                        </button>
+                        <button onclick="calculator.closeRoundTablePlacementModal()" 
+                                class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Remove existing modal if any
+        const existingModal = document.getElementById('roundTablePlacementModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    assignRoundTableToSlot(roundTableId, day, slot) {
+        const results = this.currentResults;
+        if (!results) return;
+
+        const dayIndex = day - 1;
+        const sessionsPerSlotThisDay = results.sessionsPerSlotPerDayArray ? results.sessionsPerSlotPerDayArray[dayIndex] : results.sessionsPerTimeSlot;
+        
+        // Check if there's space in this slot
+        const assignedRoundTables = this.getAssignedRoundTablesForSlot(day, slot);
+        const reservedSlotsForRoundTables = (results.roundTableSessions > 0 && sessionsPerSlotThisDay > 1) ? 1 : 0;
+        const maxPaperSessionsInSlot = sessionsPerSlotThisDay - reservedSlotsForRoundTables;
+        const totalSessionsInSlot = maxPaperSessionsInSlot + assignedRoundTables.length;
+
+        if (totalSessionsInSlot >= sessionsPerSlotThisDay) {
+            this.showNotification('This time slot is full. Cannot add more sessions.', 'error');
+            return;
+        }
+
+        // Remove from previous assignment
+        this.roundTableAssignments.delete(roundTableId);
+        
+        // Add to new assignment
+        this.roundTableAssignments.set(roundTableId, {
+            day: day,
+            slotIndex: slot
         });
+
+        // Close modal and refresh display
+        this.closeRoundTablePlacementModal();
+        this.generateDetailedBreakdown(this.currentResults);
+        
+        // Show success message
+        const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+        const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
+        this.showNotification(`Round Table ${roundTableId} assigned to Day ${day}, Time Slot ${slotLabel}`, 'success');
+    }
+
+    unassignRoundTable(roundTableId) {
+        // Remove from assignments
+        this.roundTableAssignments.delete(roundTableId);
+        
+        // Close modal and refresh display
+        this.closeRoundTablePlacementModal();
+        this.generateDetailedBreakdown(this.currentResults);
+        
+        this.showNotification(`Round Table ${roundTableId} removed from assignment`, 'success');
+    }
+
+    closeRoundTablePlacementModal() {
+        const modal = document.getElementById('roundTablePlacementModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    openTimeSlotAssignmentModal(day, slot) {
+        const results = this.currentResults;
+        if (!results) return;
+
+        // Get unassigned round tables
+        const unassignedTables = [];
+        for (let i = 1; i <= results.roundTableSessions; i++) {
+            if (!this.roundTableAssignments.has(i)) {
+                unassignedTables.push(i);
+            }
+        }
+
+        if (unassignedTables.length === 0) {
+            this.showNotification('No unassigned round tables available.', 'info');
+            return;
+        }
+
+        const timeSlotLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+        const slotLabel = timeSlotLabels[slot] || `Slot ${slot + 1}`;
+        const timeSlotDisplay = this.formatTimeSlot(day, slotLabel);
+
+        // Generate round table options
+        let tablesHTML = '';
+        unassignedTables.forEach(roundTableId => {
+            const roundTableTitle = this.getSessionLabel('round_table', roundTableId);
+            tablesHTML += `
+                <div class="flex items-center justify-between p-3 border border-purple-200 rounded-lg bg-purple-50 hover:bg-purple-100 cursor-pointer transition-colors"
+                     onclick="calculator.assignRoundTableToSlot(${roundTableId}, ${day}, ${slot})">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-users text-sm"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium text-purple-800">${roundTableTitle}</div>
+                            <div class="text-sm text-purple-600">Click to assign to this time slot</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-arrow-right text-purple-600"></i>
+                </div>
+            `;
+        });
+
+        // Show modal
+        const modalHTML = `
+            <div id="timeSlotAssignmentModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-lg max-w-lg w-full max-h-96 overflow-hidden">
+                    <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-4">
+                        <h3 class="text-lg font-semibold flex items-center">
+                            <i class="fas fa-clock mr-2"></i>
+                            Add Round Table to ${timeSlotDisplay}
+                        </h3>
+                        <p class="text-sm text-purple-100 mt-1">Day ${day} • Choose a round table to assign</p>
+                    </div>
+                    <div class="p-6 max-h-64 overflow-y-auto">
+                        <div class="space-y-3">
+                            ${tablesHTML}
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-6 py-4 flex justify-end">
+                        <button onclick="calculator.closeTimeSlotAssignmentModal()" 
+                                class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Remove existing modal if any
+        const existingModal = document.getElementById('timeSlotAssignmentModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    closeTimeSlotAssignmentModal() {
+        const modal = document.getElementById('timeSlotAssignmentModal');
+        if (modal) {
+            modal.remove();
+        }
     }
 
     showNotification(message, type = 'info') {
@@ -1601,13 +1782,13 @@ class ConventionRoomCalculator {
             `;
         }
         
-        const dragAttributes = isDraggable && displayData.type === 'round table' ? 
-            `draggable="true" data-round-table-id="${displayData.sessionNumber}" class="round-table-draggable"` : '';
+        const clickAttributes = isDraggable && displayData.type === 'round table' ? 
+            `data-round-table-id="${displayData.sessionNumber}" class="round-table-clickable"` : '';
         
         return `
-            <div class="bg-${finalColor}-50 border border-${finalColor}-200 rounded-md p-3 session-editable ${isDraggable ? 'cursor-move' : 'cursor-pointer'}" 
-                 ${dragAttributes}
-                 onclick="calculator.openEditModal('${sessionKey}', ${JSON.stringify(sessionData).replace(/"/g, '&quot;')})">
+            <div class="bg-${finalColor}-50 border border-${finalColor}-200 rounded-md p-3 session-editable ${isDraggable ? 'cursor-pointer' : 'cursor-pointer'}" 
+                 ${clickAttributes}
+                 ${!isDraggable ? `onclick="calculator.openEditModal('${sessionKey}', ${JSON.stringify(sessionData).replace(/"/g, '&quot;')})"` : ''}>
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <div class="w-8 h-8 bg-${finalColor}-500 text-white rounded-full flex items-center justify-center mr-3">
