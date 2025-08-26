@@ -815,6 +815,9 @@ class ConventionRoomCalculator {
             </div>
         `;
         
+        // Add unassigned round tables section at the end
+        breakdownHTML += this.generateUnassignedRoundTablesSection(results);
+        
         sessionBreakdown.innerHTML = breakdownHTML;
         
         // Attach event listeners for drag-and-drop functionality
@@ -868,6 +871,8 @@ class ConventionRoomCalculator {
                 unassignedTables.push(i);
             }
         }
+        
+
         
         if (unassignedTables.length === 0) {
             return ''; // All round tables are assigned
