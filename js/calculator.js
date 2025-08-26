@@ -1,4 +1,4 @@
-class ConventionRoomCalculator {
+class ConventionRoomCalculator { 
     constructor() {
         this.form = document.getElementById('calculatorForm');
         this.resultsContainer = document.getElementById('resultsContainer');
