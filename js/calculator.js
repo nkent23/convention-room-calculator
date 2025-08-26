@@ -102,6 +102,19 @@ class ConventionRoomCalculator {
         document.getElementById('manageSessionLabelsBtn').addEventListener('click', () => {
             this.openSessionLabelsModal();
         });
+
+        // Convention management
+        document.getElementById('saveConventionBtn').addEventListener('click', () => {
+            this.saveCurrentConvention();
+        });
+
+        document.getElementById('loadConventionBtn').addEventListener('click', () => {
+            this.openConventionListModal();
+        });
+
+        document.getElementById('newConventionBtn').addEventListener('click', () => {
+            this.createNewConvention();
+        });
     }
 
     initializeModalEventListeners() {
@@ -2160,6 +2173,11 @@ class ConventionRoomCalculator {
         // Regenerate the breakdown to show changes
         this.generateDetailedBreakdown(this.currentResults);
         this.updateCustomizationSummary();
+        
+        // Auto-save changes
+        this.saveDataToSupabase().catch(error => {
+            console.error('Auto-save failed:', error);
+        });
     }
 
     getSessionKey(day, timeSlot, sessionIndex) {
@@ -4440,7 +4458,7 @@ class ConventionRoomCalculator {
         // Save custom session data
         this.customSessions.set(sessionKey, sessionData);
         
-        // Save to Supabase
+        // Save to Supabase (auto-save current work)
         await this.saveDataToSupabase();
         
         this.closeEditModal();
@@ -5017,6 +5035,250 @@ class ConventionRoomCalculator {
         }
         
         return `Session ${sessionId}`;
+    }
+
+    // Convention Management Methods
+    async saveCurrentConvention() {
+        const conventionName = prompt('Enter a name for this convention:', 
+            `Convention ${new Date().toLocaleDateString()}`);
+        
+        if (!conventionName) return;
+        
+        try {
+            await this.saveConventionWithName(conventionName);
+            this.showNotification(`Convention "${conventionName}" saved successfully!`, 'success');
+        } catch (error) {
+            console.error('Error saving convention:', error);
+            this.showNotification('Error saving convention. Please try again.', 'error');
+        }
+    }
+
+    async saveConventionWithName(conventionName) {
+        if (!window.supabaseConfig) {
+            console.log('Supabase not configured, skipping convention save');
+            return;
+        }
+
+        const formData = this.getFormData();
+        const conventionData = {
+            name: conventionName,
+            days: formData.conventionDays,
+            time_slots_per_day: formData.timeSlotsPerDay,
+            available_rooms: formData.availableRooms,
+            sessions_per_time_slot: formData.sessionsPerTimeSlot,
+            total_papers: formData.totalPapers,
+            papers_per_session: formData.papersPerSession,
+            min_papers_per_session: formData.minPapersPerSession,
+            max_papers_per_session: formData.maxPapersPerSession,
+            total_round_tables: formData.totalRoundTables,
+            round_table_duration: formData.roundTableDuration,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        // Save to Supabase with the specific name
+        await window.supabaseConfig.saveNamedConvention(conventionData);
+        
+        // Also save all related data
+        await this.saveDataToSupabase();
+    }
+
+    async openConventionListModal() {
+        if (!window.supabaseConfig) {
+            this.showNotification('Database not configured. Cannot load conventions.', 'error');
+            return;
+        }
+
+        try {
+            const conventions = await window.supabaseConfig.loadAllConventions();
+            this.showConventionListModal(conventions);
+        } catch (error) {
+            console.error('Error loading conventions:', error);
+            this.showNotification('Error loading conventions. Please try again.', 'error');
+        }
+    }
+
+    showConventionListModal(conventions) {
+        let conventionsHTML = '';
+        
+        if (conventions.length === 0) {
+            conventionsHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-folder-open text-3xl mb-2"></i>
+                    <p>No saved conventions found.</p>
+                    <p class="text-sm mt-2">Create your first convention by working on a schedule and clicking "Save Convention".</p>
+                </div>
+            `;
+        } else {
+            conventionsHTML = conventions.map(conv => `
+                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-900">${conv.name}</div>
+                        <div class="text-sm text-gray-600">
+                            ${conv.days} days • ${conv.total_papers} papers • ${conv.total_round_tables} round tables
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            Last updated: ${new Date(conv.updated_at).toLocaleDateString()}
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 ml-4">
+                        <button onclick="calculator.loadConvention('${conv.id}')" 
+                                class="px-3 py-2 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 transition-colors">
+                            Load
+                        </button>
+                        <button onclick="calculator.deleteConvention('${conv.id}', '${conv.name}')" 
+                                class="px-3 py-2 bg-red-500 text-white text-sm rounded-md hover:bg-red-600 transition-colors">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        const modalHTML = `
+            <div id="conventionListModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="calculator.closeConventionListModal()">
+                <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 flex-shrink-0">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-lg font-semibold flex items-center">
+                                    <i class="fas fa-folder-open mr-2"></i>
+                                    Load Convention
+                                </h3>
+                                <p class="text-sm text-blue-100 mt-1">Select a convention to load or manage your saved conventions</p>
+                            </div>
+                            <button onclick="calculator.closeConventionListModal()" 
+                                    class="text-white hover:text-blue-200 transition-colors ml-4">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-6 flex-1 overflow-y-auto">
+                        <div class="space-y-3">
+                            ${conventionsHTML}
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-6 py-4 flex justify-between flex-shrink-0">
+                        <div class="text-sm text-gray-600">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Loading a convention will replace your current work
+                        </div>
+                        <button onclick="calculator.closeConventionListModal()" 
+                                class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Remove existing modal if any
+        const existingModal = document.getElementById('conventionListModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    closeConventionListModal() {
+        const modal = document.getElementById('conventionListModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    async loadConvention(conventionId) {
+        if (!window.supabaseConfig) return;
+
+        try {
+            // Load the specific convention
+            const conventionData = await window.supabaseConfig.loadConventionById(conventionId);
+            if (conventionData) {
+                this.populateFormFromData(conventionData);
+                await this.loadDataFromSupabase(); // Load all related data
+                this.calculateRequirements(); // Recalculate with loaded data
+                this.closeConventionListModal();
+                this.showNotification(`Convention "${conventionData.name}" loaded successfully!`, 'success');
+            }
+        } catch (error) {
+            console.error('Error loading convention:', error);
+            this.showNotification('Error loading convention. Please try again.', 'error');
+        }
+    }
+
+    async deleteConvention(conventionId, conventionName) {
+        if (!confirm(`Are you sure you want to delete "${conventionName}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await window.supabaseConfig.deleteConvention(conventionId);
+            this.showNotification(`Convention "${conventionName}" deleted successfully.`, 'success');
+            // Refresh the convention list
+            this.openConventionListModal();
+        } catch (error) {
+            console.error('Error deleting convention:', error);
+            this.showNotification('Error deleting convention. Please try again.', 'error');
+        }
+    }
+
+    createNewConvention() {
+        if (!this.hasUnsavedChanges() || confirm('Creating a new convention will clear your current work. Continue?')) {
+            // Reset all data to defaults
+            this.customSessions.clear();
+            this.roundTableAssignments.clear();
+            this.paperSessionAssignments.clear();
+            this.timeSlotSchedule.clear();
+            this.sessionCategories.clear();
+            this.paperDetails.clear();
+            this.paperAssignments.clear();
+            this.roomNames.clear();
+            this.moderators.clear();
+            this.chairs.clear();
+            this.customTimeSlots.clear();
+            this.customRoomsPerDay.clear();
+            this.customSessionsPerSlot.clear();
+            this.customTimeSlotLabels.clear();
+            this.customSessionLabels.clear();
+
+            // Reset form to defaults
+            document.getElementById('conventionDays').value = 3;
+            document.getElementById('timeSlotsPerDay').value = 4;
+            document.getElementById('availableRooms').value = 10;
+            document.getElementById('sessionsPerTimeSlot').value = 3;
+            document.getElementById('totalPapers').value = 0;
+            document.getElementById('papersPerSession').value = 4;
+            document.getElementById('minPapersPerSession').value = 2;
+            document.getElementById('maxPapersPerSession').value = 6;
+            document.getElementById('totalRoundTables').value = 0;
+            document.getElementById('roundTableDuration').value = 1;
+
+            // Hide detailed breakdown
+            this.detailedBreakdown.classList.add('hidden');
+            this.currentResults = null;
+
+            // Update all previews
+            this.updateTimeSlotPreview();
+            this.updateRoomPreview();
+            this.updateModeratorPreview();
+            this.updateChairPreview();
+            this.updateCategoryPreview();
+            this.updatePaperPreview();
+
+            this.showNotification('New convention created. Start by setting up your basic parameters.', 'success');
+        }
+    }
+
+    hasUnsavedChanges() {
+        // Simple check - if there are any sessions or custom data, consider it as having changes
+        return this.customSessions.size > 0 || 
+               this.roundTableAssignments.size > 0 || 
+               this.paperSessionAssignments.size > 0 ||
+               this.paperDetails.size > 0 ||
+               parseInt(document.getElementById('totalPapers').value) > 0 ||
+               parseInt(document.getElementById('totalRoundTables').value) > 0;
     }
 }
 
