@@ -10,7 +10,15 @@ A comprehensive web application for planning and organizing academic conference 
 - **Real-time Updates**: All calculations update automatically when input parameters change
 - **PDF Export**: Generate comprehensive PDF schedules with all session details
 
-### Session Management
+### Convention Management
+- **Multiple Conventions**: Create, save, and load multiple convention configurations
+- **Named Conventions**: Give each convention a meaningful name for easy identification
+- **Convention Switching**: Switch between different saved conventions without losing work
+- **Auto-Save**: Current work is automatically saved when you make changes
+- **Convention Library**: View all saved conventions with details (papers, round tables, last updated)
+- **Delete Conventions**: Remove old or unwanted convention configurations
+
+### Session Management  
 - **Paper Sessions**: Automatic distribution based on paper count and session constraints
 - **Round Table Sessions**: Manual drag-and-drop placement into specific time slots
 - **Category-based Organization**: Support for custom paper categories (e.g., Medieval Literature, Modern Literature)
@@ -63,6 +71,13 @@ A comprehensive web application for planning and organizing academic conference 
   - `sessionsPerTimeSlot` - Concurrent sessions per slot (default: 3)
   - `totalPapers` - Total number of papers (default: 0)
   - `totalRoundTables` - Total number of round tables (default: 0)
+
+### Convention Management Features
+- **Convention Actions**:
+  - `#newConventionBtn` - Create a new convention (clears current work)
+  - `#saveConventionBtn` - Save current convention with a custom name
+  - `#loadConventionBtn` - Open convention library to load a saved convention
+  - Convention list modal with load/delete options for each saved convention
 
 ### Interactive Features
 - **Position-Specific Assignment**:
@@ -214,13 +229,17 @@ A comprehensive web application for planning and organizing academic conference 
 ## 🚀 Getting Started
 
 1. **Open the Application**: Navigate to `index.html` in a web browser
-2. **Configure Basic Settings**: Set convention days, time slots, and available rooms
-3. **Add Papers**: Use the "Manage Papers" button to add individual papers or import from CSV
-4. **Set Up Round Tables**: Configure the number of round tables needed
-5. **Calculate Schedule**: The system automatically generates the initial schedule
-6. **Manual Placement**: All positions start empty. Click any position to assign session type, or use "Auto-Populate" for intelligent assignment with round tables at end positions. Full modification capabilities available.
-7. **Customize Sessions**: Click on any session to edit details, assign moderators, or add notes
-8. **Export Results**: Generate PDF schedules or export data for external use
+2. **Create or Load Convention**: 
+   - Click "New" to start fresh, or "Load" to open a saved convention
+   - Use "Save" to save your current work with a custom name
+3. **Configure Basic Settings**: Set convention days, time slots, and available rooms
+4. **Add Papers**: Use the "Manage Papers" button to add individual papers or import from CSV
+5. **Set Up Round Tables**: Configure the number of round tables needed
+6. **Calculate Schedule**: The system automatically generates the initial schedule
+7. **Manual Placement**: All positions start empty. Click any position to assign session type, or use "Auto-Populate" for intelligent assignment with round tables at end positions. Full modification capabilities available.
+8. **Customize Sessions**: Click on any session to edit details, assign moderators, or add notes
+9. **Save Your Work**: Click "Save" to save the convention with a name for later use
+10. **Export Results**: Generate PDF schedules or export data for external use
 
 ## 🔧 Technical Requirements
 
