@@ -2,8 +2,8 @@
 class SupabaseConfig {
     constructor() {
         // These will be set via environment variables in production
-        this.supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://pygjrxofwyxnxywzkozx.supabase.co';
-        this.supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5Z2pyeG9md3l4bnh5d3prb3p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwOTIyMDYsImV4cCI6MjA3MTY2ODIwNn0.cVTxbp2GXvBp_LujnIzSkd2RbFS-iwnOnAeWqu-z2HM';
+        this.supabaseUrl = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_URL) || 'https://pygjrxofwyxnxywzkozx.supabase.co';
+        this.supabaseAnonKey = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5Z2pyeG9md3l4bnh5d3prb3p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYwOTIyMDYsImV4cCI6MjA3MTY2ODIwNn0.cVTxbp2GXvBp_LujnIzSkd2RbFS-iwnOnAeWqu-z2HM';
         
         // Initialize Supabase client
         this.supabase = supabase.createClient(this.supabaseUrl, this.supabaseAnonKey);
